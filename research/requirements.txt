@@ -1,0 +1,3 @@
+polars_ta
+expr_codegen
+alphainspect
