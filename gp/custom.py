@@ -15,10 +15,14 @@ class RET_TYPE:
 Expr = RET_TYPE
 
 
+def _random_int_():
+    return random.choice([1, 3, 5, 10, 20, 40, 60])
+
+
 def add_constants(pset):
     """添加常量"""
     # !!! 名字一定不能与其它名字重，上次与int一样，结果其它地方报错 [<class 'deap.gp.random_int'>]
-    pset.addEphemeralConstant('_random_int_', lambda: random.choice([1, 3, 5, 10, 20, 40, 60]), int)
+    pset.addEphemeralConstant('_random_int_', _random_int_, int)
     return pset
 
 

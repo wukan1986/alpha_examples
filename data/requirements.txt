@@ -1,1 +1,2 @@
 polars_ta
+loguru
