@@ -21,6 +21,8 @@ df = pd.DataFrame({
     'high': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     'low': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     'close': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
+    'vwap': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
+    'volume': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     # TODO 昨收价。从交易所查询得来。注意：由于除权除息的原因，昨收价不等于昨天的收盘价
     'pre_close': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     # TODO 后复权因子。后复权因子不会历史数据不会变化
@@ -37,6 +39,8 @@ df = df.filter(pl.col('FILTER') == 1).drop(columns=['FILTER'])
 # 复权
 df = df.with_columns([
     (pl.col(['open', 'high', 'low', 'close']) * pl.col('factor')).name.map(lambda x: x.upper()),
+    pl.col('volume').alias('VOLUME'),
+    pl.col('vwap').alias('VWAP'),
 ])
 
 # 打标签，由于标签常用到，所以这里提前打在基础数据中，用户按自己需求调整
