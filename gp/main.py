@@ -63,8 +63,9 @@ LABEL_y = 'RETURN_OO_1'
 
 # TODO: 数据准备，脚本将取df_input，可运行`data`下脚本生成
 df_input = pl.read_parquet('data/data.parquet')
-df_train = df_input.filter(pl.col('date') < datetime(2021, 1, 1))
-df_vaild = df_input.filter(pl.col('date') >= datetime(2021, 1, 1))
+dt1 = datetime(2021, 1, 1)
+df_train = df_input.filter(pl.col('date') < dt1)
+df_valid = df_input.filter(pl.col('date') >= dt1)
 del df_input  # 释放内存
 # ======================================
 # 日志路径
@@ -102,7 +103,7 @@ def get_fitness(name: str, kv: Dict[str, float]) -> float:
     return kv.get(name, False) or float('nan')
 
 
-def map_exprs(evaluate, invalid_ind, gen, label, input_train=None, input_vaild=None):
+def map_exprs(evaluate, invalid_ind, gen, label, input_train=None, input_valid=None):
     """原本是一个普通的map或多进程map，个体都是独立计算
     但这里考虑到表达式很相似，可以重复利用公共子表达式，
     所以决定种群一起进行计算，返回结果评估即可
@@ -149,20 +150,20 @@ def map_exprs(evaluate, invalid_ind, gen, label, input_train=None, input_vaild=N
 
     # 因子计算
     output_train = None if input_train is None else _lib.main(input_train)
-    output_vaild = None if input_vaild is None else _lib.main(input_vaild)
+    output_valid = None if input_valid is None else _lib.main(input_valid)
 
     elapsed_time = time.perf_counter() - tic
     logger.info("因子计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
 
     # 计算种群适应度
     ic_train, ir_train = fitness_population(output_train, list(expr_dict.keys()), label=label)
-    ic_vaild, ir_vaild = fitness_population(output_vaild, list(expr_dict.keys()), label=label)
+    ic_valid, ir_valid = fitness_population(output_valid, list(expr_dict.keys()), label=label)
     logger.info("适应度计算完成")
 
     # 取评估函数值，多目标。
     results1 = [(
         abs(get_fitness(key, ic_train)),
-        abs(get_fitness(key, ic_vaild),  # 这只是为了同时显示样本外值
+        abs(get_fitness(key, ic_valid),  # 这只是为了同时显示样本外值
             )) for key in expr_keys]
 
     # TODO 样本内外过滤条件
@@ -201,7 +202,7 @@ toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
 toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
 toolbox.register("evaluate", print)  # 不单独做评估了，在map中一并做了
-toolbox.register('map', map_exprs, gen=count(), label=LABEL_y, input_train=df_train, input_vaild=df_vaild)
+toolbox.register('map', map_exprs, gen=count(), label=LABEL_y, input_train=df_train, input_valid=df_valid)
 
 
 def main():
