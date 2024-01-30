@@ -11,6 +11,7 @@ print("pwd:", os.getcwd())
 
 # %% 表达式转换
 import inspect
+from loguru import logger
 
 from expr_codegen.expr import string_to_exprs
 from expr_codegen.tool import ExprTool
@@ -39,15 +40,18 @@ codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
                     extra_codes=(_expr_code,))
 
 # print(codes)
+logger.info('转码完成')
 
 # %% 生成因子
 import polars as pl
 
 df = pl.read_parquet('data/data.parquet')
+logger.info('数据加载完成')
 
 _globals = {'df_input': df}
 exec(codes, _globals)
 df = _globals['df_output']
+logger.info('因子计算完成')
 df.tail()
 
 # %% 因子报表
@@ -62,12 +66,14 @@ forward_return = 'RETURN_OO_5'
 period = 5
 axvlines = ('2020-01-01',)
 
+logger.info('开始生成报表')
 # 画ic的直方图函数，也可以用来画普通数值
 plot_ic_hist(df, factor)
 # plt.show()
 
 df = with_factor_quantile(df, factor, quantiles=10)
 create_3x2_sheet(df, factor, forward_return, fwd_ret_1, period=period, axvlines=axvlines)
+logger.info('报表已生成')
 
 plt.show()
 

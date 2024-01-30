@@ -15,6 +15,7 @@ print("pwd:", os.getcwd())
 # ====================
 # 表达式转换
 import inspect
+from loguru import logger
 
 from expr_codegen.expr import string_to_exprs
 from expr_codegen.tool import ExprTool
@@ -45,6 +46,7 @@ codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
                     extra_codes=(_expr_code,))
 
 # print(codes)
+logger.info('转码完成')
 # 保存代码到指定文件，在Notebook中将会使用它
 output_file = 'research/output.py'
 with open(output_file, 'w', encoding='utf-8') as f:
@@ -52,6 +54,8 @@ with open(output_file, 'w', encoding='utf-8') as f:
 # ====================
 # 因子报表
 from alphainspect.reports import ipynb_to_html
+
+logger.info('生成报表')
 
 factor = 'SMA_020'
 ipynb_to_html('research/template.ipynb',
@@ -65,3 +69,5 @@ ipynb_to_html('research/template.ipynb',
               fwd_ret_1='RETURN_OO_1',
               forward_return='RETURN_OO_5',
               period=5)
+
+logger.info('浏览器已关闭')
