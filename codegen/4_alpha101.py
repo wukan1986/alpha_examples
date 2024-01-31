@@ -10,7 +10,8 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.expr import string_to_exprs
+from expr_codegen.codes import source_to_asts
+from expr_codegen.expr import dict_to_exprs
 from expr_codegen.tool import ExprTool
 
 # 导入OPEN等特征
@@ -25,11 +26,8 @@ ADV5, ADV10, ADV15, ADV20, ADV30, ADV40, ADV50, ADV60, ADV81, ADV120, ADV150, AD
 SECTOR, INDUSTRY, SUBINDUSTRY, """, cls=Symbol)
 
 
-def _expr_code():
+def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
-
-    # 以下因子来原于qlib项目的Alpha158
-    # https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py
 
     alpha_001 = (cs_rank(ts_arg_max(signed_power(if_else((RETURNS < 0), ts_std_dev(RETURNS, 20), CLOSE), 2.), 5)) - 0.5)
     alpha_002 = (-1 * ts_corr(cs_rank(ts_delta(log(VOLUME), 2)), cs_rank(((CLOSE - OPEN) / OPEN)), 6))
@@ -134,14 +132,13 @@ def _expr_code():
 
 
 # 读取源代码，转成字符串
-source = inspect.getsource(_expr_code)
-exprs_txt = []
-# 将字符串转成表达式，与streamlit中效果一样
-exprs_src = string_to_exprs('\n'.join([source] + exprs_txt), globals().copy())
+source = inspect.getsource(_code_block_)
+raw, assigns = source_to_asts(source)
+assigns_dict = dict_to_exprs(assigns, globals().copy())
 
 # 生成代码
 tool = ExprTool()
-codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
+codes, G = tool.all(assigns_dict, style='polars', template_file='template.py.j2',
                     replace=True, regroup=True, format=True,
                     date='date', asset='asset',
                     # 还复制了最原始的表达式

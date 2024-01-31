@@ -10,14 +10,15 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.expr import string_to_exprs
+from expr_codegen.codes import source_to_asts
+from expr_codegen.expr import dict_to_exprs
 from expr_codegen.tool import ExprTool
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
 
 
-def _expr_code():
+def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
 
     ROCP_020 = ts_returns(CLOSE, 20)
@@ -34,14 +35,13 @@ def _expr_code():
 
 
 # 读取源代码，转成字符串
-source = inspect.getsource(_expr_code)
-exprs_txt = []
-# 将字符串转成表达式，与streamlit中效果一样
-exprs_src = string_to_exprs('\n'.join([source] + exprs_txt), globals().copy())
+source = inspect.getsource(_code_block_)
+raw, assigns = source_to_asts(source)
+assigns_dict = dict_to_exprs(assigns, globals().copy())
 
 # 生成代码
 tool = ExprTool()
-codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
+codes, G = tool.all(assigns_dict, style='polars', template_file='template.py.j2',
                     replace=True, regroup=True, format=True,
                     date='date', asset='asset',
                     # 还复制了最原始的表达式

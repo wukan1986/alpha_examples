@@ -13,7 +13,8 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.expr import string_to_exprs
+from expr_codegen.codes import source_to_asts
+from expr_codegen.expr import dict_to_exprs
 from expr_codegen.tool import ExprTool
 
 # 导入OPEN等特征
@@ -30,8 +31,9 @@ def cs_label(cond, x, q=20):
     return if_else(cond, None, cs_bucket(cs_winsorize_quantile(x, 0.01, 0.99), q))
 
 
-def _expr_code():
+def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
+    import polars as pl  # noqa
 
     # 这里用未复权的价格更合适
     # 今日涨停或跌停
@@ -55,18 +57,17 @@ def _expr_code():
 
 
 # 读取源代码，转成字符串
-source = inspect.getsource(_expr_code)
-exprs_txt = []
-# 将字符串转成表达式，与streamlit中效果一样
-exprs_src = string_to_exprs('\n'.join([source] + exprs_txt), globals().copy())
+source = inspect.getsource(_code_block_)
+raw, assigns = source_to_asts(source)
+assigns_dict = dict_to_exprs(assigns, globals().copy())
 
 # 生成代码
 tool = ExprTool()
-codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
+codes, G = tool.all(assigns_dict, style='polars', template_file='template.py.j2',
                     replace=True, regroup=True, format=True,
                     date='date', asset='asset',
                     # 复制了需要使用的函数，还复制了最原始的表达式
-                    extra_codes=(_expr_code, cs_label,))
+                    extra_codes=(raw, _code_block_, cs_label,))
 
 print(codes)
 #

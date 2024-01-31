@@ -10,14 +10,15 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.expr import string_to_exprs
+from expr_codegen.codes import source_to_asts
+from expr_codegen.expr import dict_to_exprs
 from expr_codegen.tool import ExprTool
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
 
 
-def _expr_code():
+def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
 
     # 以下因子来原于qlib项目的Alpha158
@@ -53,50 +54,49 @@ def _expr_code():
 
 
 # 读取源代码，转成字符串
-source = inspect.getsource(_expr_code)
-exprs_txt = []
+source = inspect.getsource(_code_block_)
+raw, assigns = source_to_asts(source)
+
 for i in (1, 2, 3, 4):
-    exprs_txt.append(f'OPEN{i} = ts_delay(OPEN, {i}) / CLOSE')
-    exprs_txt.append(f'HIGH{i} = ts_delay(HIGH, {i}) / CLOSE')
-    exprs_txt.append(f'LOW{i} = ts_delay(LOW, {i}) / CLOSE')
-    exprs_txt.append(f'VOLUME{i} = ts_delay(VOLUME, {i}) / (VOLUME + 1e-12)')
+    assigns[f'OPEN{i}'] = f'ts_delay(OPEN, {i}) / CLOSE'
+    assigns[f'HIGH{i}'] = f'ts_delay(HIGH, {i}) / CLOSE'
+    assigns[f'LOW{i}'] = f'ts_delay(LOW, {i}) / CLOSE'
+    assigns[f'VOLUME{i}'] = f'ts_delay(VOLUME, {i}) / (VOLUME + 1e-12)'
 
 for i in (5, 10, 20, 30, 60):
-    exprs_txt.append(f'ROC{i} = ts_delay(CLOSE, {i}) / CLOSE')
     # 注意：qlib的roc与talib中的表示方法不同
-    exprs_txt.append(f'ROC{i} = ts_delay(CLOSE, {i}) / CLOSE')
-    exprs_txt.append(f'MA{i} = ts_mean(CLOSE, {i}) / CLOSE')
-    exprs_txt.append(f'STD{i} = ts_std_dev(CLOSE, {i}) / CLOSE')
-    exprs_txt.append(f'MAX{i} = ts_max(CLOSE, {i}) / CLOSE')
-    exprs_txt.append(f'MIN{i} = ts_min(CLOSE, {i}) / CLOSE')
-    exprs_txt.append(f'QTLU{i} = ts_percentage(CLOSE, {i}, 0.8) / CLOSE')
-    exprs_txt.append(f'QTLD{i} = ts_percentage(CLOSE, {i}, 0.2) / CLOSE')
-    exprs_txt.append(f'RANK{i} = ts_rank(CLOSE, {i})')
-    exprs_txt.append(f'RSV{i} = ts_RSV(HIGH, LOW, CLOSE, {i})')
-    exprs_txt.append(f'CORR{i} = ts_corr(CLOSE, log1p(VOLUME), {i})')
-    exprs_txt.append(f'CNTP{i} = ts_mean(CLOSE > ts_delay(CLOSE, 1), {i})')
-    exprs_txt.append(f'CNTN{i} = ts_mean(CLOSE < ts_delay(CLOSE, 1), {i})')
-    exprs_txt.append(f'CNTD{i} = CNTP{i}-CNTN{i}')
-    exprs_txt.append(f'SUMP{i} = ts_sum(max_(CLOSE - ts_delay(CLOSE, 1), 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)')
-    exprs_txt.append(f'SUMN{i} = ts_sum(max_(ts_delay(CLOSE, 1) - CLOSE, 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)')
-    exprs_txt.append(f'SUMD{i} = SUMP{i}-SUMN{i}')
-    exprs_txt.append(f'VMA{i} = ts_mean(VOLUME, {i}) / (VOLUME + 1e-12)')
-    exprs_txt.append(f'VSTD{i} = ts_std_dev(VOLUME, {i}) / (VOLUME + 1e-12)')
-    exprs_txt.append(f'WVMA{i} = ts_std_dev(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) / (ts_mean(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) + 1e-12)')
-    exprs_txt.append(f'VSUMP{i} = ts_sum(max_(VOLUME - ts_delay(VOLUME, 1), 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)')
-    exprs_txt.append(f'VSUMN{i} = ts_sum(max_(ts_delay(VOLUME, 1) - VOLUME, 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)')
-    exprs_txt.append(f'VSUMD{i} = VSUMP{i}-VSUMN{i}')
+    assigns[f'ROC{i}'] = f'ts_delay(CLOSE, {i}) / CLOSE'
+    assigns[f'MA{i}'] = f'ts_mean(CLOSE, {i}) / CLOSE'
+    assigns[f'STD{i}'] = f'ts_std_dev(CLOSE, {i}) / CLOSE'
+    assigns[f'MAX{i}'] = f'ts_max(CLOSE, {i}) / CLOSE'
+    assigns[f'MIN{i}'] = f'ts_min(CLOSE, {i}) / CLOSE'
+    assigns[f'QTLU{i}'] = f'ts_percentage(CLOSE, {i}, 0.8) / CLOSE'
+    assigns[f'QTLD{i}'] = f'ts_percentage(CLOSE, {i}, 0.2) / CLOSE'
+    assigns[f'RANK{i}'] = f'ts_rank(CLOSE, {i}) / CLOSE'
+    assigns[f'RSV{i}'] = f'ts_RSV(HIGH, LOW, CLOSE, {i})'
+    assigns[f'CORR{i}'] = f'ts_corr(CLOSE, log1p(VOLUME), {i})'
+    assigns[f'CNTP{i}'] = f'ts_mean(CLOSE > ts_delay(CLOSE, 1), {i})'
+    assigns[f'CNTN{i}'] = f'ts_mean(CLOSE < ts_delay(CLOSE, 1), {i})'
+    assigns[f'CNTD{i}'] = f'CNTP{i}-CNTN{i}'
+    assigns[f'SUMP{i}'] = f'ts_sum(max_(CLOSE - ts_delay(CLOSE, 1), 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)'
+    assigns[f'SUMN{i}'] = f'ts_sum(max_(ts_delay(CLOSE, 1) - CLOSE, 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)'
+    assigns[f'SUMD{i}'] = f'SUMP{i}-SUMN{i}'
+    assigns[f'VMA{i}'] = f'ts_mean(VOLUME, {i}) / (VOLUME + 1e-12)'
+    assigns[f'VSTD{i}'] = f'ts_std_dev(VOLUME, {i}) / (VOLUME + 1e-12)'
+    assigns[f'WVMA{i}'] = f'ts_std_dev(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) / (ts_mean(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) + 1e-12)'
+    assigns[f'VSUMP{i}'] = f'ts_sum(max_(VOLUME - ts_delay(VOLUME, 1), 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)'
+    assigns[f'VSUMN{i}'] = f'ts_sum(max_(ts_delay(VOLUME, 1) - VOLUME, 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)'
+    assigns[f'VSUMD{i}'] = f'VSUMP{i}-VSUMN{i}'
 
-# 将字符串转成表达式，与streamlit中效果一样
-exprs_src = string_to_exprs('\n'.join([source] + exprs_txt), globals().copy())
-
+assigns = dict(sorted(assigns.items(), key=lambda x: x[0]))
+assigns_dict = dict_to_exprs(assigns, globals().copy())
 # 生成代码
 tool = ExprTool()
-codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
+codes, G = tool.all(assigns_dict, style='polars', template_file='template.py.j2',
                     replace=True, regroup=True, format=True,
                     date='date', asset='asset',
                     # 还复制了最原始的表达式
-                    extra_codes=(_expr_code,))
+                    extra_codes=())
 
 print(codes)
 #
