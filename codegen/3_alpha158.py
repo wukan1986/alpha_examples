@@ -54,8 +54,6 @@ def _expr_code():
 
 # 读取源代码，转成字符串
 source = inspect.getsource(_expr_code)
-# print(source)
-
 exprs_txt = []
 for i in (1, 2, 3, 4):
     exprs_txt.append(f'OPEN{i} = ts_delay(OPEN, {i}) / CLOSE')

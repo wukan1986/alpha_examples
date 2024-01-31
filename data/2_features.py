@@ -14,14 +14,17 @@ print("pwd:", os.getcwd())
 
 import polars as pl
 
-# 加载数据
+from loguru import logger
+
+logger.info('加载数据')
 df = pl.read_parquet('data/data.parquet')
 
-# 生成特征
+logger.info('生成特征')
 from codes.features import main
 
 df = main(df)
+logger.info('特征生成完成')
 print(df.tail())
 
-# 保存
+logger.info('保存')
 df.write_parquet('data/features.parquet')

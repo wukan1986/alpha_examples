@@ -8,6 +8,7 @@
 import numpy as np
 import pandas as pd
 import polars as pl
+from loguru import logger
 
 _N = 250 * 15
 _K = 500
@@ -46,7 +47,9 @@ df = df.with_columns([
 # 打标签，由于标签常用到，所以这里提前打在基础数据中，用户按自己需求调整
 from codes.labels import main
 
+logger.info('生成特征')
 df = main(df)
+logger.info('特征生成完成')
 print(df.tail())
 
 # 数据压缩，f64改f32。
@@ -54,8 +57,7 @@ print(df.tail())
 df = df.select(pl.all().shrink_dtype())
 df = df.shrink_to_fit()
 
-print(df.head())
 print(df.tail())
 
-# 保存
+logger.info('保存')
 df.write_parquet('data.parquet')

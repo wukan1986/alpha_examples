@@ -35,10 +35,9 @@ def _expr_code():
 
 # 读取源代码，转成字符串
 source = inspect.getsource(_expr_code)
-# print(source)
-
+exprs_txt = []
 # 将字符串转成表达式，与streamlit中效果一样
-exprs_src = string_to_exprs(source, globals().copy())
+exprs_src = string_to_exprs('\n'.join([source] + exprs_txt), globals().copy())
 
 # 生成代码
 tool = ExprTool()
@@ -46,7 +45,7 @@ codes, G = tool.all(exprs_src, style='polars', template_file='template.py.j2',
                     replace=True, regroup=True, format=True,
                     date='date', asset='asset',
                     # 还复制了最原始的表达式
-                    extra_codes=(_expr_code,))
+                    )
 
 print(codes)
 #
