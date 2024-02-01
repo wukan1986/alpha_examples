@@ -54,14 +54,14 @@ def _code_block_():
 
 
 # 读取源代码，转成字符串
-source = inspect.getsource(_code_block_)
+source1 = inspect.getsource(_code_block_)
 source2 = """
 # 只有在sources_to_asts之前才能添加三元表达式
 _TEST1 = OPEN>CLOSE?OPEN:CLOSE
 _TEST2 = (OPEN>CLOSE)*-1
 _TEST3 = (OPEN==CLOSE)*-1
 """
-raw, assigns = sources_to_asts(source, source2)
+raw, assigns = sources_to_asts(source1, source2)
 
 for i in (1, 2, 3, 4):
     assigns[f'OPEN{i}'] = f'ts_delay(OPEN, {i}) / CLOSE'

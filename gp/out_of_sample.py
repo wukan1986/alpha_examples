@@ -24,7 +24,7 @@ df_train = df_input.filter(pl.col('date') < dt1)
 df_valid = df_input.filter(pl.col('date') >= dt1)
 del df_input  # 释放内存
 # 重新计算并回填
-fitnesses = map_exprs(print, pop, gen=count(9999), label=LABEL_y, input_train=df_train, input_valid=df_valid)
+fitnesses = map_exprs(print, pop, gen=count(9999), label=LABEL_y, df_input=df_valid, split_date=dt1)
 for ind, fit in zip(pop, fitnesses):
     ind.fitness.values = fit
 

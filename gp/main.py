@@ -19,6 +19,11 @@ labels是因变量
 2. 可能是超额收益率
 3. 可能是0/1等分类标签
 
+样本内外的思考
+一开始，为了计算样本内外，我参考了机器学习的方法，提前将数据分成了训练集和测试集，然后分别计算因子值和IC/IR，
+运行了一段时间后忽然发现，对于个体来说表达式已经明确了，每日的IC已经是确定了，而训练集与测试集的IC区别只是mean(IC)时间段的差异。
+所以整体一起计算，然后分段计算IC/IR速度能快上不少。
+
 """
 import os
 import sys
@@ -64,9 +69,6 @@ LABEL_y = 'RETURN_OO_1'
 # TODO: 数据准备，脚本将取df_input，可运行`data`下脚本生成
 df_input = pl.read_parquet('data/data.parquet')
 dt1 = datetime(2021, 1, 1)
-df_train = df_input.filter(pl.col('date') < dt1)
-df_valid = df_input.filter(pl.col('date') >= dt1)
-del df_input  # 释放内存
 # ======================================
 # 日志路径
 LOG_DIR = Path('log')
@@ -80,30 +82,36 @@ def fitness_individual(a: str, b: str) -> pl.Expr:
     return pl.corr(a, b, method='spearman', ddof=0, propagate_nans=False)
 
 
-def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str):
+def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, split_date: datetime):
     """种群fitness函数"""
     if df is None:
-        return {}, {}
+        return {}, {}, {}, {}
 
     df = df.group_by(by=['date']).agg(
         [fitness_individual(X, label) for X in columns]
-    )
+    ).sort(by=['date']).fill_nan(None)
+    # 将IC划分成训练集与测试集
+    df_train = df.filter(pl.col('date') < split_date)
+    df_valid = df.filter(pl.col('date') >= split_date)
 
-    _expr = cs.numeric().fill_nan(None).drop_nulls()
-    ic = df.select(_expr.mean())
-    ir = df.select(_expr.mean() / _expr.std(ddof=0))
+    ic_train = df_train.select(cs.numeric().mean())
+    ir_train = df_train.select(cs.numeric().mean() / cs.numeric().std(ddof=0))
+    ic_valid = df_valid.select(cs.numeric().mean())
+    ir_valid = df_valid.select(cs.numeric().mean() / cs.numeric().std(ddof=0))
 
-    # 无效值用的None
-    ic = ic.to_dicts()[0]
-    ir = ir.to_dicts()[0]
-    return ic, ir
+    ic_train = ic_train.to_dicts()[0]
+    ir_train = ir_train.to_dicts()[0]
+    ic_valid = ic_valid.to_dicts()[0]
+    ir_valid = ir_valid.to_dicts()[0]
+
+    return ic_train, ir_train, ic_valid, ir_valid
 
 
 def get_fitness(name: str, kv: Dict[str, float]) -> float:
     return kv.get(name, False) or float('nan')
 
 
-def map_exprs(evaluate, invalid_ind, gen, label, input_train=None, input_valid=None):
+def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
     """原本是一个普通的map或多进程map，个体都是独立计算
     但这里考虑到表达式很相似，可以重复利用公共子表达式，
     所以决定种群一起进行计算，返回结果评估即可
@@ -113,10 +121,17 @@ def map_exprs(evaluate, invalid_ind, gen, label, input_train=None, input_valid=N
     with open(LOG_DIR / f'exprs_{g:04d}.pkl', 'wb') as f:
         pickle.dump(invalid_ind, f)
 
+    # 读取历史fitness
+    try:
+        with open(LOG_DIR / f'fitness_cache.pkl', 'rb') as f:
+            fitness_results = pickle.load(f)
+    except FileNotFoundError:
+        fitness_results = {}
+
     logger.info("表达式转码...")
     # DEAP表达式转sympy表达式。约定以GP_开头，表示遗传编程
     expr_dict = {f'GP_{i:04d}': stringify_for_sympy(expr) for i, expr in enumerate(invalid_ind)}
-    expr_keys = list(expr_dict.keys())
+    expr_old = expr_dict.copy()
     expr_dict = dict_to_exprs(expr_dict, globals().copy())
 
     # 清理重复表达式，通过字典特性删除
@@ -126,54 +141,76 @@ def map_exprs(evaluate, invalid_ind, gen, label, input_train=None, input_valid=N
     expr_dict = {k: v for k, v in expr_dict.items() if not is_invalid(v, pset, RET_TYPE)}
     # 清理无意义表达式
     expr_dict = {k: v for k, v in expr_dict.items() if not is_meaningless(v)}
+    # 历史表达式不再重复计算
+    before_len = len(expr_dict)
+    expr_dict = {k: v for k, v in expr_dict.items() if str(v) not in fitness_results}
+    after_len = len(expr_dict)
+    logger.info('剔除历史已经计算过的适应度，数量由 {} -> {}', before_len, after_len)
 
-    # 注意：以上的简化操作并没有修改种群，只是是在计算前做了预处理。所以还是会出现不同代重复计算
+    if after_len > 0:
+        tool = ExprTool()
+        # 表达式转脚本
+        codes, G = tool.all(expr_dict, style='polars', template_file='template.py.j2',
+                            replace=False, regroup=True, format=True,
+                            date='date', asset='asset')
 
-    tool = ExprTool()
-    # 表达式转脚本
-    codes, G = tool.all(expr_dict, style='polars', template_file='template.py.j2',
-                        replace=False, regroup=True, format=True,
-                        date='date', asset='asset')
+        # 备份生成的代码
+        path = LOG_DIR / f'codes_{g:04d}.py'
+        import_path = f'log.codes_{g:04d}'
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(codes)
 
-    # 备份生成的代码
-    path = LOG_DIR / f'codes_{g:04d}.py'
-    import_path = f'log.codes_{g:04d}'
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(codes)
+        cnt = len(expr_dict)
+        logger.info("代码执行。共 {} 条 表达式", cnt)
+        tic = time.perf_counter()
 
-    cnt = len(expr_dict)
-    logger.info("代码执行。共 {} 条 表达式", cnt)
-    tic = time.perf_counter()
+        # exec和import都可以，import好处是内部代码可调试
+        _lib = __import__(import_path, fromlist=['*'])
 
-    # exec和import都可以，import好处是内部代码可调试
-    _lib = __import__(import_path, fromlist=['*'])
+        # 因子计算
+        df_output = _lib.main(df_input)
 
-    # 因子计算
-    output_train = None if input_train is None else _lib.main(input_train)
-    output_valid = None if input_valid is None else _lib.main(input_valid)
+        elapsed_time = time.perf_counter() - tic
+        logger.info("因子计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
 
-    elapsed_time = time.perf_counter() - tic
-    logger.info("因子计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
+        # 计算种群适应度
+        ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(expr_dict.keys()), label=label, split_date=split_date)
+        logger.info("适应度计算完成")
 
-    # 计算种群适应度
-    ic_train, ir_train = fitness_population(output_train, list(expr_dict.keys()), label=label)
-    ic_valid, ir_valid = fitness_population(output_valid, list(expr_dict.keys()), label=label)
-    logger.info("适应度计算完成")
+        # 样本内外适应度提取
+        new_results = {}
+        for k, v in expr_dict.items():
+            v = str(v)
+            new_results[v] = {'ic_train': get_fitness(k, ic_train),
+                              'ir_train': get_fitness(k, ir_train),
+                              'ic_valid': get_fitness(k, ic_valid),
+                              'ir_valid': get_fitness(k, ir_valid),
+                              }
+        # 合并历史与最新的fitness
+        fitness_results.update(new_results)
+        # 保存适应度，方便下一代使用
+        with open(LOG_DIR / f'fitness_cache.pkl', 'wb') as f:
+            pickle.dump(fitness_results, f)
+    else:
+        pass
 
     # 取评估函数值，多目标。
-    results1 = [(
-        abs(get_fitness(key, ic_train)),
-        abs(get_fitness(key, ic_valid),  # 这只是为了同时显示样本外值
-            )) for key in expr_keys]
-
-    # TODO 样本内外过滤条件
     results2 = []
-    for s0, s1 in results1:
-        if s0 == s0:  # 非空
-            if s0 > 0.001:  # 样本内打分要大
-                if s0 * 0.7 < s1:  # 样本外打分大于样本内打分的70%
-                    results2.append((s0, s1))
-                    continue
+    for k, v in expr_old.items():
+        v = str(v)
+        d = fitness_results.get(v, None)
+        if d is None:
+            logger.debug('{} 不合法/无意义/重复 等原因，在计算前就被剔除了', v)
+        else:
+            s0, s1, s2, s3 = d['ic_train'], d['ir_train'], d['ic_valid'], d['ir_valid']
+            # ic要看绝对值
+            s0, s1, s2, s3 = abs(s0), s1, abs(s2), s3
+            # TODO 这地方要按自己需求定制，过滤太多可能无法输出有效表达式
+            if s0 == s0:  # 非空
+                if s0 > 0.001:  # 样本内打分要大
+                    if s0 * 0.6 < s2:  # 样本外打分大于样本内打分的70%
+                        results2.append((s0, s2))
+                        continue
         results2.append((np.nan, np.nan))
 
     return results2
@@ -202,7 +239,7 @@ toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
 toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
 toolbox.register("evaluate", print)  # 不单独做评估了，在map中一并做了
-toolbox.register('map', map_exprs, gen=count(), label=LABEL_y, input_train=df_train, input_valid=df_valid)
+toolbox.register('map', map_exprs, gen=count(), label=LABEL_y, df_input=df_input, split_date=dt1)
 
 
 def main():
@@ -216,7 +253,7 @@ def main():
 
     # 只统计一个指标更清晰
     stats = tools.Statistics(lambda ind: ind.fitness.values)
-    # 打补丁后，名人堂可以用nan了
+    # 打补丁后，名人堂可以用nan了，如果全nan会报警
     stats.register("avg", np.nanmean, axis=0)
     stats.register("std", np.nanstd, axis=0)
     stats.register("min", np.nanmin, axis=0)
@@ -250,6 +287,8 @@ def print_population(pop):
 
 if __name__ == "__main__":
     print('另行执行`tensorboard --logdir=runs`，然后在浏览器中访问`http://localhost:6006/`，可跟踪运行情况')
+    logger.warning('运行前请检查`fitness_cache.pkl`是否要手工删除。数据集、切分时间发生了变化一定要删除，否则重复的表达式不会参与计算')
+
     population, logbook, hof = main()
 
     # 保存名人堂
