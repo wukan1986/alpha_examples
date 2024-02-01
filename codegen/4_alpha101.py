@@ -10,7 +10,7 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.codes import source_to_asts
+from expr_codegen.codes import sources_to_asts
 from expr_codegen.expr import dict_to_exprs
 from expr_codegen.tool import ExprTool
 
@@ -28,6 +28,20 @@ SECTOR, INDUSTRY, SUBINDUSTRY, """, cls=Symbol)
 
 def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
+
+    # adv{d} = average daily dollar volume for the past d days
+    ADV5 = ts_mean(AMOUNT, 5)
+    ADV10 = ts_mean(AMOUNT, 10)
+    ADV15 = ts_mean(AMOUNT, 15)
+    ADV20 = ts_mean(AMOUNT, 20)
+    ADV30 = ts_mean(AMOUNT, 30)
+    ADV40 = ts_mean(AMOUNT, 40)
+    ADV50 = ts_mean(AMOUNT, 50)
+    ADV60 = ts_mean(AMOUNT, 60)
+    ADV81 = ts_mean(AMOUNT, 81)
+    ADV120 = ts_mean(AMOUNT, 120)
+    ADV150 = ts_mean(AMOUNT, 150)
+    ADV180 = ts_mean(AMOUNT, 180)
 
     alpha_001 = (cs_rank(ts_arg_max(signed_power(if_else((RETURNS < 0), ts_std_dev(RETURNS, 20), CLOSE), 2.), 5)) - 0.5)
     alpha_002 = (-1 * ts_corr(cs_rank(ts_delta(log(VOLUME), 2)), cs_rank(((CLOSE - OPEN) / OPEN)), 6))
@@ -90,7 +104,7 @@ def _code_block_():
     alpha_059 = (-1 * ts_rank(ts_decay_linear(ts_corr(gp_demean(INDUSTRY, ((VWAP * 0.728317) + (VWAP * (1 - 0.728317)))), VOLUME, 4), 16), 8))
     alpha_060 = (0 - (1 * ((2 * cs_scale(cs_rank(((((CLOSE - LOW) - (HIGH - CLOSE)) / (HIGH - LOW)) * VOLUME)), 1)) - cs_scale(cs_rank(ts_arg_max(CLOSE, 10)), 1))))
     alpha_061 = (cs_rank((VWAP - ts_min(VWAP, 16))) < cs_rank(ts_corr(VWAP, ADV180, 18)))
-    # "alpha_062": if_else((cs_rank(ts_corr(VWAP, ts_sum(ADV20, 22.4101), 9.91009)) < cs_rank(((cs_rank(OPEN) + cs_rank(OPEN)) < (cs_rank(((HIGH + LOW) / 2)) + cs_rank(HIGH))))), -1, 0)
+    #alpha_062 = if_else((cs_rank(ts_corr(VWAP, ts_sum(ADV20, 22.4101), 9.91009)) < cs_rank(((cs_rank(OPEN) + cs_rank(OPEN)) < (cs_rank(((HIGH + LOW) / 2)) + cs_rank(HIGH))))), -1, 0)
     alpha_063 = ((cs_rank(ts_decay_linear(ts_delta(gp_demean(INDUSTRY, CLOSE), 2), 8)) - cs_rank(ts_decay_linear(ts_corr(((VWAP * 0.318108) + (OPEN * (1 - 0.318108))), ts_sum(ADV180, 37), 14), 12))) * -1)
     alpha_064 = if_else((cs_rank(ts_corr(ts_sum(((OPEN * 0.178404) + (LOW * (1 - 0.178404))), 13), ts_sum(ADV120, 13), 17)) < cs_rank(ts_delta(((((HIGH + LOW) / 2) * 0.178404) + (VWAP * (1 - 0.178404))), 4))), -1, 0)
     alpha_065 = if_else((cs_rank(ts_corr(((OPEN * 0.00817205) + (VWAP * (1 - 0.00817205))), ts_sum(ADV60, 7), 6)) < cs_rank((OPEN - ts_min(OPEN, 14)))), -1, 0)
@@ -133,7 +147,7 @@ def _code_block_():
 
 # 读取源代码，转成字符串
 source = inspect.getsource(_code_block_)
-raw, assigns = source_to_asts(source)
+raw, assigns = sources_to_asts(source)
 assigns_dict = dict_to_exprs(assigns, globals().copy())
 
 # 生成代码

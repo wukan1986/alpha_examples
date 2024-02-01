@@ -16,7 +16,7 @@ print("pwd:", os.getcwd())
 # 表达式转换
 import inspect
 
-from expr_codegen.codes import source_to_asts
+from expr_codegen.codes import sources_to_asts
 from expr_codegen.expr import dict_to_exprs
 from expr_codegen.tool import ExprTool
 from loguru import logger
@@ -36,7 +36,7 @@ def _code_block_():
 
 # 读取源代码，转成字符串
 source = inspect.getsource(_code_block_)
-raw, assigns = source_to_asts(source)
+raw, assigns = sources_to_asts(source)
 assigns_dict = dict_to_exprs(assigns, globals().copy())
 
 # 生成代码
