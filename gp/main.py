@@ -47,7 +47,8 @@ import polars.selectors as cs
 from deap import base, creator
 from loguru import logger
 
-from expr_codegen.expr import safe_eval, is_meaningless, dict_to_exprs, function_to_Function
+from expr_codegen.codes import sources_to_exprs
+from expr_codegen.expr import is_meaningless
 from expr_codegen.tool import ExprTool
 from gp.custom import add_constants, add_operators, add_factors, RET_TYPE
 from gp.helper import stringify_for_sympy, is_invalid
@@ -111,6 +112,29 @@ def get_fitness(name: str, kv: Dict[str, float]) -> float:
     return kv.get(name, False) or float('nan')
 
 
+def population_to_exprs(pop):
+    """群体转表达式"""
+    sources = [f'GP_{i:04d}={stringify_for_sympy(expr)}' for i, expr in enumerate(pop)]
+    raw, exprs_dict = sources_to_exprs(globals().copy(), '\n'.join(sources))
+    return exprs_dict
+
+
+def filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results):
+    # 清理重复表达式，通过字典特性删除
+    exprs_dict = {v: k for k, v in exprs_dict.items()}
+    exprs_dict = {v: k for k, v in exprs_dict.items()}
+    # 清理非法表达式
+    exprs_dict = {k: v for k, v in exprs_dict.items() if not is_invalid(v, pset, RET_TYPE)}
+    # 清理无意义表达式
+    exprs_dict = {k: v for k, v in exprs_dict.items() if not is_meaningless(v)}
+    # 历史表达式不再重复计算
+    before_len = len(exprs_dict)
+    exprs_dict = {k: v for k, v in exprs_dict.items() if str(v) not in fitness_results}
+    after_len = len(exprs_dict)
+    logger.info('剔除历史已经计算过的适应度，数量由 {} -> {}', before_len, after_len)
+    return exprs_dict, after_len
+
+
 def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
     """原本是一个普通的map或多进程map，个体都是独立计算
     但这里考虑到表达式很相似，可以重复利用公共子表达式，
@@ -130,27 +154,14 @@ def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
 
     logger.info("表达式转码...")
     # DEAP表达式转sympy表达式。约定以GP_开头，表示遗传编程
-    expr_dict = {f'GP_{i:04d}': stringify_for_sympy(expr) for i, expr in enumerate(invalid_ind)}
-    expr_old = expr_dict.copy()
-    expr_dict = dict_to_exprs(expr_dict, globals().copy())
-
-    # 清理重复表达式，通过字典特性删除
-    expr_dict = {v: k for k, v in expr_dict.items()}
-    expr_dict = {v: k for k, v in expr_dict.items()}
-    # 清理非法表达式
-    expr_dict = {k: v for k, v in expr_dict.items() if not is_invalid(v, pset, RET_TYPE)}
-    # 清理无意义表达式
-    expr_dict = {k: v for k, v in expr_dict.items() if not is_meaningless(v)}
-    # 历史表达式不再重复计算
-    before_len = len(expr_dict)
-    expr_dict = {k: v for k, v in expr_dict.items() if str(v) not in fitness_results}
-    after_len = len(expr_dict)
-    logger.info('剔除历史已经计算过的适应度，数量由 {} -> {}', before_len, after_len)
+    exprs_dict = population_to_exprs(invalid_ind)
+    exprs_old = exprs_dict.copy()
+    exprs_dict, after_len = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
 
     if after_len > 0:
         tool = ExprTool()
         # 表达式转脚本
-        codes, G = tool.all(expr_dict, style='polars', template_file='template.py.j2',
+        codes, G = tool.all(exprs_dict, style='polars', template_file='template.py.j2',
                             replace=False, regroup=True, format=True,
                             date='date', asset='asset')
 
@@ -160,7 +171,7 @@ def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(codes)
 
-        cnt = len(expr_dict)
+        cnt = len(exprs_dict)
         logger.info("代码执行。共 {} 条 表达式", cnt)
         tic = time.perf_counter()
 
@@ -174,12 +185,12 @@ def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
         logger.info("因子计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
 
         # 计算种群适应度
-        ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(expr_dict.keys()), label=label, split_date=split_date)
+        ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
         logger.info("适应度计算完成")
 
         # 样本内外适应度提取
         new_results = {}
-        for k, v in expr_dict.items():
+        for k, v in exprs_dict.items():
             v = str(v)
             new_results[v] = {'ic_train': get_fitness(k, ic_train),
                               'ir_train': get_fitness(k, ir_train),
@@ -196,7 +207,7 @@ def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
 
     # 取评估函数值，多目标。
     results2 = []
-    for k, v in expr_old.items():
+    for k, v in exprs_old.items():
         v = str(v)
         d = fitness_results.get(v, None)
         if d is None:
@@ -276,13 +287,9 @@ def main():
 
 def print_population(pop):
     # !!!这句非常重要
-    globals_ = globals().copy()
-    globals_.update(function_to_Function(globals_))
-    for i, e in enumerate(pop):
-        # 小心globals()中的log等变量与内部函数冲突
-        print(f'{i:03d}', '\t', e.fitness, '\t', e, '\t<--->\t', end='')
-        # 分两行，冲突时可以知道是哪出错
-        print(safe_eval(stringify_for_sympy(e), globals_))
+    exprs_dict = population_to_exprs(pop)
+    for (k, v), i in zip(exprs_dict.items(), pop):
+        print(f'{k}', '\t', i.fitness, '\t', v, '\t<--->\t', i)
 
 
 if __name__ == "__main__":
