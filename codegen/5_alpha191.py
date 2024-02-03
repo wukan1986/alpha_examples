@@ -75,6 +75,8 @@ def _code_block_():
     alpha_052 = cs_rank(max_(0, HIGH - ts_delay((HIGH + LOW + CLOSE) / 3, 1)), 26) / cs_rank(max_(0, ts_delay((HIGH + LOW + CLOSE) / 3, 1) - LOW), 26)
     alpha_053 = ts_count(CLOSE > ts_delay(CLOSE, 1), 12) / 12 * 100
     alpha_054 = -1 * cs_rank(ts_std_dev(abs_(CLOSE - OPEN), 10) + (CLOSE - OPEN) + ts_corr(CLOSE, OPEN, 10))
+    alpha_055 = cs_rank(16 * (CLOSE - ts_delay(CLOSE, 1) + (CLOSE - OPEN) / 2 + ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / if_else((abs_(HIGH - ts_delay(CLOSE, 1)) > abs_(LOW - ts_delay(CLOSE, 1))) & (abs_(HIGH - ts_delay(CLOSE, 1)) > abs_(HIGH - ts_delay(LOW, 1))), abs_(HIGH - ts_delay(CLOSE, 1)) + abs_(LOW - ts_delay(CLOSE, 1)) / 2 + abs_(ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / 4,
+                                                                                                                                  if_else((abs_(LOW - ts_delay(CLOSE, 1)) > abs_(HIGH - ts_delay(LOW, 1))) & (abs_(LOW - ts_delay(CLOSE, 1)) > abs_(HIGH - ts_delay(CLOSE, 1))), abs_(LOW - ts_delay(CLOSE, 1)) + abs_(HIGH - ts_delay(CLOSE, 1)) / 2 + abs_(ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / 4, abs_(HIGH - ts_delay(LOW, 1)) + abs_(ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / 4)) * max_(abs_(HIGH - ts_delay(CLOSE, 1)), abs_(LOW - ts_delay(CLOSE, 1))), 20)
     alpha_056 = cs_rank(OPEN - ts_min(OPEN, 12)) < cs_rank(cs_rank(ts_corr(cs_rank((HIGH + LOW) / 2, 19), cs_rank(ts_mean(VOLUME, 40), 19), 13)) ** 5)
     alpha_057 = ts_SMA_CN((CLOSE - ts_min(LOW, 9)) / (ts_max(HIGH, 9) - ts_min(LOW, 9)) * 100, 3, 1)
     alpha_058 = ts_count(CLOSE > ts_delay(CLOSE, 1), 20) / 20 * 100
@@ -94,6 +96,7 @@ def _code_block_():
     alpha_072 = ts_SMA_CN((ts_max(HIGH, 6) - CLOSE) / (ts_max(HIGH, 6) - ts_min(LOW, 6)) * 100, 15, 1)
     alpha_073 = (ts_rank(ts_decay_linear(ts_decay_linear(ts_corr(CLOSE, VOLUME, 10), 16), 4), 5) - cs_rank(ts_decay_linear(ts_corr(VWAP, ts_mean(VOLUME, 30), 4), 3))) * -1
     alpha_074 = cs_rank(ts_corr(cs_rank(LOW * 0.35 + VWAP * 0.65, 20), cs_rank(ts_mean(VOLUME, 40), 20), 7)) + cs_rank(ts_corr(cs_rank(VWAP), cs_rank(VOLUME), 6))
+    alpha_075 = ts_count((CLOSE > OPEN) & (BANCHMARKINDEXCLOSE < BANCHMARKINDEXOPEN), 50) / ts_count(BANCHMARKINDEXCLOSE < BANCHMARKINDEXOPEN, 50)
     alpha_076 = ts_std_dev(abs_(CLOSE / ts_delay(CLOSE, 1) - 1) / VOLUME, 20) / ts_mean(abs_(CLOSE / ts_delay(CLOSE, 1) - 1) / VOLUME, 20)
     alpha_077 = min_(cs_rank(ts_decay_linear((HIGH + LOW) / 2 + HIGH - (VWAP + HIGH), 20)), cs_rank(ts_decay_linear(ts_corr((HIGH + LOW) / 2, ts_mean(VOLUME, 40), 3), 6)))
     alpha_078 = ((HIGH + LOW + CLOSE) / 3 - ts_mean((HIGH + LOW + CLOSE) / 3, 12)) / (0.015 * ts_mean(abs_(CLOSE - ts_mean((HIGH + LOW + CLOSE) / 3, 12)), 12))
@@ -154,6 +157,8 @@ def _code_block_():
     alpha_134 = (CLOSE - ts_delay(CLOSE, 12)) / ts_delay(CLOSE, 12) * VOLUME
     alpha_135 = ts_SMA_CN(ts_delay(CLOSE / ts_delay(CLOSE, 20), 1), 20, 1)
     alpha_136 = -1 * cs_rank(ts_delta(RET, 3)) * ts_corr(OPEN, VOLUME, 10)
+    alpha_137 = 16 * (CLOSE - ts_delay(CLOSE, 1) + (CLOSE - OPEN) / 2 + ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / if_else((abs_(HIGH - ts_delay(CLOSE, 1)) > abs_(LOW - ts_delay(CLOSE, 1))) & (abs_(HIGH - ts_delay(CLOSE, 1)) > abs_(HIGH - ts_delay(LOW, 1))), abs_(HIGH - ts_delay(CLOSE, 1)) + abs_(LOW - ts_delay(CLOSE, 1)) / 2 + abs_(ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / 4,
+                                                                                                                          if_else((abs_(LOW - ts_delay(CLOSE, 1)) > abs_(HIGH - ts_delay(LOW, 1))) & (abs_(LOW - ts_delay(CLOSE, 1)) > abs_(HIGH - ts_delay(CLOSE, 1))), abs_(LOW - ts_delay(CLOSE, 1)) + abs_(HIGH - ts_delay(CLOSE, 1)) / 2 + abs_(ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / 4, abs_(HIGH - ts_delay(LOW, 1)) + abs_(ts_delay(CLOSE, 1) - ts_delay(OPEN, 1)) / 4)) * max_(abs_(HIGH - ts_delay(CLOSE, 1)), abs_(LOW - ts_delay(CLOSE, 1)))
     alpha_138 = (cs_rank(ts_decay_linear(ts_delta(LOW * 0.7 + VWAP * 0.3, 3), 20)) - ts_rank(ts_decay_linear(ts_rank(ts_corr(ts_rank(LOW, 8), ts_rank(ts_mean(VOLUME, 60), 17), 5), 19), 16), 7)) * -1
     alpha_139 = -1 * ts_corr(OPEN, VOLUME, 10)
     alpha_140 = min_(cs_rank(ts_decay_linear(cs_rank(OPEN) + cs_rank(LOW) - (cs_rank(HIGH) + cs_rank(CLOSE)), 8)), ts_rank(ts_decay_linear(ts_corr(ts_rank(CLOSE, 8), ts_rank(ts_mean(VOLUME, 60), 20), 8), 7), 3))
@@ -177,11 +182,13 @@ def _code_block_():
     alpha_162 = (ts_SMA_CN(max_(CLOSE - ts_delay(CLOSE, 1), 0), 12, 1) / ts_SMA_CN(abs_(CLOSE - ts_delay(CLOSE, 1)), 12, 1) * 100 - min_(ts_SMA_CN(max_(CLOSE - ts_delay(CLOSE, 1), 0), 12, 1) / ts_SMA_CN(abs_(CLOSE - ts_delay(CLOSE, 1)), 12, 1) * 100, 12)) / (max_(ts_SMA_CN(max_(CLOSE - ts_delay(CLOSE, 1), 0), 12, 1) / ts_SMA_CN(abs_(CLOSE - ts_delay(CLOSE, 1)), 12, 1) * 100, 12) - min_(ts_SMA_CN(max_(CLOSE - ts_delay(CLOSE, 1), 0), 12, 1) / ts_SMA_CN(abs_(CLOSE - ts_delay(CLOSE, 1)), 12, 1) * 100, 12))
     alpha_163 = cs_rank(-1 * RET * ts_mean(VOLUME, 20) * VWAP * (HIGH - CLOSE))
     alpha_164 = ts_SMA_CN((if_else(CLOSE > ts_delay(CLOSE, 1), 1 / (CLOSE - ts_delay(CLOSE, 1)), 1) - min_(if_else(CLOSE > ts_delay(CLOSE, 1), 1 / (CLOSE - ts_delay(CLOSE, 1)), 1), 12)) / (HIGH - LOW) * 100, 13, 2)
+    alpha_166 = -20 * (20 - 1) ** 1.5 * cs_rank(CLOSE / ts_delay(CLOSE, 1) - 1 - ts_mean(CLOSE / ts_delay(CLOSE, 1) - 1, 20), 20) / ((20 - 1) * (20 - 2) * cs_rank((CLOSE / ts_delay(CLOSE, 1)) ** 2, 20) ** 1.5)
     alpha_167 = cs_rank(if_else(CLOSE - ts_delay(CLOSE, 1) > 0, CLOSE - ts_delay(CLOSE, 1), 0), 12)
     alpha_168 = -1 * VOLUME / ts_mean(VOLUME, 20)
     alpha_169 = ts_SMA_CN(ts_mean(ts_delay(ts_SMA_CN(CLOSE - ts_delay(CLOSE, 1), 9, 1), 1), 12) - ts_mean(ts_delay(ts_SMA_CN(CLOSE - ts_delay(CLOSE, 1), 9, 1), 1), 26), 10, 1)
     alpha_170 = cs_rank(1 / CLOSE) * VOLUME / ts_mean(VOLUME, 20) * (HIGH * cs_rank(HIGH - CLOSE) / (cs_rank(HIGH, 5) / 5)) - cs_rank(VWAP - ts_delay(VWAP, 5))
     alpha_171 = -1 * ((LOW - CLOSE) * OPEN ** 5) / ((CLOSE - HIGH) * CLOSE ** 5)
+    alpha_172 = ts_mean(abs_(cs_rank(if_else((LD > 0) & (LD > HD), LD, 0), 14) * 100 / cs_rank(TR, 14) - cs_rank(if_else((HD > 0) & (HD > LD), HD, 0), 14) * 100 / cs_rank(TR, 14)) / (cs_rank(if_else((LD > 0) & (LD > HD), LD, 0), 14) * 100 / cs_rank(TR, 14) + cs_rank(if_else((HD > 0) & (HD > LD), HD, 0), 14) * 100 / cs_rank(TR, 14)) * 100, 6)
     alpha_173 = 3 * ts_SMA_CN(CLOSE, 13, 2) - 2 * ts_SMA_CN(ts_SMA_CN(CLOSE, 13, 2), 13, 2) + ts_SMA_CN(ts_SMA_CN(ts_SMA_CN(log(CLOSE), 13, 2), 13, 2), 13, 2)
     alpha_174 = ts_SMA_CN(if_else(CLOSE > ts_delay(CLOSE, 1), ts_std_dev(CLOSE, 20), 0), 20, 1)
     alpha_175 = ts_mean(max_(max_(HIGH - LOW, abs_(ts_delay(CLOSE, 1) - HIGH)), abs_(ts_delay(CLOSE, 1) - LOW)), 6)
@@ -191,8 +198,11 @@ def _code_block_():
     alpha_179 = cs_rank(ts_corr(VWAP, VOLUME, 4)) * cs_rank(ts_corr(cs_rank(LOW), cs_rank(ts_mean(VOLUME, 50)), 12))
     alpha_180 = if_else(ts_mean(VOLUME, 20) < VOLUME, -1 * ts_rank(abs_(ts_delta(CLOSE, 7)), 60) * sign(ts_delta(CLOSE, 7)), -1 * VOLUME)
     alpha_181 = cs_rank(CLOSE / ts_delay(CLOSE, 1) - 1 - ts_mean(CLOSE / ts_delay(CLOSE, 1) - 1, 20) - (BANCHMARKINDEXCLOSE - ts_mean(BANCHMARKINDEXCLOSE, 20)) ** 2, 20) / cs_rank((BANCHMARKINDEXCLOSE - ts_mean(BANCHMARKINDEXCLOSE, 20)) ** 3)
+    alpha_182 = ts_count((CLOSE > OPEN) & (BANCHMARKINDEXCLOSE > BANCHMARKINDEXOPEN) | (CLOSE < OPEN) & (BANCHMARKINDEXCLOSE < BANCHMARKINDEXOPEN), 20) / 20
     alpha_184 = cs_rank(ts_corr(ts_delay(OPEN - CLOSE, 1), CLOSE, 200)) + cs_rank(OPEN - CLOSE)
     alpha_185 = cs_rank(-1 * (1 - OPEN / CLOSE) ** 2)
+    alpha_186 = (ts_mean(abs_(cs_rank(if_else((LD > 0) & (LD > HD), LD, 0), 14) * 100 / cs_rank(TR, 14) - cs_rank(if_else((HD > 0) & (HD > LD), HD, 0), 14) * 100 / cs_rank(TR, 14)) / (cs_rank(if_else((LD > 0) & (LD > HD), LD, 0), 14) * 100 / cs_rank(TR, 14) + cs_rank(if_else((HD > 0) & (HD > LD), HD, 0), 14) * 100 / cs_rank(TR, 14)) * 100, 6) + ts_delay(
+        ts_mean(abs_(cs_rank(if_else((LD > 0) & (LD > HD), LD, 0), 14) * 100 / cs_rank(TR, 14) - cs_rank(if_else((HD > 0) & (HD > LD), HD, 0), 14) * 100 / cs_rank(TR, 14)) / (cs_rank(if_else((LD > 0) & (LD > HD), LD, 0), 14) * 100 / cs_rank(TR, 14) + cs_rank(if_else((HD > 0) & (HD > LD), HD, 0), 14) * 100 / cs_rank(TR, 14)) * 100, 6), 6)) / 2
     alpha_187 = cs_rank(if_else(OPEN <= ts_delay(OPEN, 1), 0, max_(HIGH - OPEN, OPEN - ts_delay(OPEN, 1))), 20)
     alpha_188 = (HIGH - LOW - ts_SMA_CN(HIGH - LOW, 11, 2)) / ts_SMA_CN(HIGH - LOW, 11, 2) * 100
     alpha_189 = ts_mean(abs_(CLOSE - ts_mean(CLOSE, 6)), 6)
