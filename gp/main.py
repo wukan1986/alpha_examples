@@ -45,27 +45,29 @@ from typing import Sequence, Dict
 import polars as pl
 import polars.selectors as cs
 from deap import base, creator
-from loguru import logger
-
 from expr_codegen.codes import sources_to_exprs
 from expr_codegen.expr import is_meaningless
 from expr_codegen.tool import ExprTool
+from loguru import logger
+from more_itertools import batched
+
 from gp.custom import add_constants, add_operators, add_factors, RET_TYPE
-from gp.helper import stringify_for_sympy, is_invalid
 # !!! 非常重要。给deap打补丁
 from gp.deap_patch import *  # noqa
-
-# ======================================
-
+from gp.helper import stringify_for_sympy, is_invalid
 # 引入OPEN等
 from sympy_define import *  # noqa
 
+logger.remove()  # 这行很关键，先删除logger自动产生的handler，不然会出现重复输出的问题
+logger.add(sys.stderr, level='INFO')  # 只输出INFO以上的日志
 # ======================================
 # TODO 必须元组，1表示找最大值,-1表示找最小值
 FITNESS_WEIGHTS = (1.0, 1.0)
 
 # TODO y表示类别标签、因变量、输出变量，需要与数据文件字段对应
 LABEL_y = 'RETURN_OO_1'
+# TODO 种群如果非常大，但内存比较小，可以分批计算，每次计算BATCH_SIZE个个体
+BATCH_SIZE = 50
 
 # TODO: 数据准备，脚本将取df_input，可运行`data`下脚本生成
 df_input = pl.read_parquet('data/data.parquet')
@@ -132,10 +134,56 @@ def filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results):
     exprs_dict = {k: v for k, v in exprs_dict.items() if str(v) not in fitness_results}
     after_len = len(exprs_dict)
     logger.info('剔除历史已经计算过的适应度，数量由 {} -> {}', before_len, after_len)
-    return exprs_dict, after_len
+    return exprs_dict
 
 
-def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
+def batched_exprs(exprs_dict, gen, batch_id, label, df_input, split_date):
+    """每代种群分批计算
+
+    由于种群数大，一次性计算可能内存不足，所以提供分批计算功能，同时也为分布式计算做准备
+    """
+    tool = ExprTool()
+    # 表达式转脚本
+    codes, G = tool.all(exprs_dict, style='polars', template_file='template.py.j2',
+                        replace=False, regroup=True, format=True,
+                        date='date', asset='asset')
+
+    # 备份生成的代码
+    path = LOG_DIR / f'codes_{gen:04d}_{batch_id:02d}.py'
+    import_path = f'log.codes_{gen:04d}_{batch_id:02d}'
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(codes)
+
+    cnt = len(exprs_dict)
+    logger.info("{}代{}批 代码 开始执行。共 {} 条 表达式", gen, batch_id, cnt)
+    tic = time.perf_counter()
+
+    # exec和import都可以，import好处是内部代码可调试
+    _lib = __import__(import_path, fromlist=['*'])
+
+    # 因子计算
+    df_output = _lib.main(df_input)
+
+    elapsed_time = time.perf_counter() - tic
+    logger.info("{}代{}批 因子 计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", gen, batch_id, elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
+
+    # 计算种群适应度
+    ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
+    logger.info("{}代{}批 适应度 计算完成", gen, batch_id)
+
+    # 样本内外适应度提取
+    new_results = {}
+    for k, v in exprs_dict.items():
+        v = str(v)
+        new_results[v] = {'ic_train': get_fitness(k, ic_train),
+                          'ir_train': get_fitness(k, ir_train),
+                          'ic_valid': get_fitness(k, ic_valid),
+                          'ir_valid': get_fitness(k, ir_valid),
+                          }
+    return new_results
+
+
+def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date, batch_size):
     """原本是一个普通的map或多进程map，个体都是独立计算
     但这里考虑到表达式很相似，可以重复利用公共子表达式，
     所以决定种群一起进行计算，返回结果评估即可
@@ -156,52 +204,18 @@ def map_exprs(evaluate, invalid_ind, gen, label, df_input, split_date):
     # DEAP表达式转sympy表达式。约定以GP_开头，表示遗传编程
     exprs_dict = population_to_exprs(invalid_ind)
     exprs_old = exprs_dict.copy()
-    exprs_dict, after_len = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
+    exprs_dict = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
 
-    if after_len > 0:
-        tool = ExprTool()
-        # 表达式转脚本
-        codes, G = tool.all(exprs_dict, style='polars', template_file='template.py.j2',
-                            replace=False, regroup=True, format=True,
-                            date='date', asset='asset')
+    if len(exprs_dict) > 0:
+        # 分批计算,以后可以考虑改成并行
+        for batch_id, exprs_batched in enumerate(batched(exprs_dict.items(), batch_size)):
+            new_results = batched_exprs(dict(exprs_batched), g, batch_id, label, df_input, split_date)
 
-        # 备份生成的代码
-        path = LOG_DIR / f'codes_{g:04d}.py'
-        import_path = f'log.codes_{g:04d}'
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(codes)
-
-        cnt = len(exprs_dict)
-        logger.info("代码执行。共 {} 条 表达式", cnt)
-        tic = time.perf_counter()
-
-        # exec和import都可以，import好处是内部代码可调试
-        _lib = __import__(import_path, fromlist=['*'])
-
-        # 因子计算
-        df_output = _lib.main(df_input)
-
-        elapsed_time = time.perf_counter() - tic
-        logger.info("因子计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
-
-        # 计算种群适应度
-        ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
-        logger.info("适应度计算完成")
-
-        # 样本内外适应度提取
-        new_results = {}
-        for k, v in exprs_dict.items():
-            v = str(v)
-            new_results[v] = {'ic_train': get_fitness(k, ic_train),
-                              'ir_train': get_fitness(k, ir_train),
-                              'ic_valid': get_fitness(k, ic_valid),
-                              'ir_valid': get_fitness(k, ir_valid),
-                              }
-        # 合并历史与最新的fitness
-        fitness_results.update(new_results)
-        # 保存适应度，方便下一代使用
-        with open(LOG_DIR / f'fitness_cache.pkl', 'wb') as f:
-            pickle.dump(fitness_results, f)
+            # 合并历史与最新的fitness
+            fitness_results.update(new_results)
+            # 保存适应度，方便下一代使用
+            with open(LOG_DIR / f'fitness_cache.pkl', 'wb') as f:
+                pickle.dump(fitness_results, f)
     else:
         pass
 
@@ -250,7 +264,7 @@ toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
 toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=17))
 toolbox.register("evaluate", print)  # 不单独做评估了，在map中一并做了
-toolbox.register('map', map_exprs, gen=count(), label=LABEL_y, df_input=df_input, split_date=dt1)
+toolbox.register('map', map_exprs, gen=count(), label=LABEL_y, df_input=df_input, split_date=dt1, batch_size=BATCH_SIZE)
 
 
 def main():
@@ -260,7 +274,7 @@ def main():
     # TODO: 初始种群大小
     pop = toolbox.population(n=100)
     # TODO: 名人堂，表示最终选优多少个体
-    hof = tools.HallOfFame(50)
+    hof = tools.HallOfFame(100)
 
     # 只统计一个指标更清晰
     stats = tools.Statistics(lambda ind: ind.fitness.values)
