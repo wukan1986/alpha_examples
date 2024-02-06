@@ -118,6 +118,7 @@ class BatchExprActor:
 # TODO 种群如果非常大，但内存比较小，可以分批计算，每次计算BATCH_SIZE个个体
 BATCH_SIZE = 50
 DIVIDE_SIZE = BatchExprActor.get_nodes_count()
+# 根据节点数生成对应数量的actor
 pool = ActorPool([BatchExprActor.remote() for i in range(DIVIDE_SIZE)])
 
 
@@ -145,7 +146,7 @@ def map_exprs(evaluate, invalid_ind, gen, label, split_date):
     exprs_dict = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
 
     if len(exprs_dict) > 0:
-        # 并行计算
+        # 并行计算，木桶效益，最好多台机器能差不多时间算完
         new_results = pool.map(lambda a, v: a.process.remote(*v, g, label, split_date), enumerate(more_itertools.batched(exprs_dict.items(), BATCH_SIZE)))
         # new_results = pool.map(lambda a, v: a.process.remote(*v, g, label, split_date), enumerate(more_itertools.divide(DIVIDE_SIZE, exprs_dict.items())))
 

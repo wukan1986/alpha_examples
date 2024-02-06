@@ -98,9 +98,8 @@ def map_exprs(evaluate, invalid_ind, gen, label, split_date):
     exprs_dict = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
 
     if len(exprs_dict) > 0:
-        # 分批计算
+        # 单机分批计算，应当优先保证内存可放下，所以用batched，设置最大可支持一次算多少条
         for batch_id, exprs_batched in enumerate(more_itertools.batched(exprs_dict.items(), BATCH_SIZE)):
-            # for batch_id, exprs_batched in enumerate(more_itertools.divide(DIVIDE_SIZE, exprs_dict.items())):
             new_results = batched_exprs(batch_id, dict(exprs_batched), g, label, split_date, df_input)
 
             # 合并历史与最新的fitness
