@@ -1,0 +1,4 @@
+ray[default]
+polars_ta
+expr_codegen
+more_itertools

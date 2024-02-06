@@ -11,7 +11,7 @@ sys.path.append(pwd)
 # ===============
 # %%
 # 从main中导入，可以大大减少代码
-from main import *
+from gp_run.main import *
 
 with open(LOG_DIR / f'hall_of_fame.pkl', 'rb') as f:
     pop = pickle.load(f)
@@ -44,7 +44,14 @@ codes, G = tool.all(expr_dict, style='polars', template_file='template.py.j2',
                     replace=False, regroup=False, format=False,
                     date='date', asset='asset')
 # %%
-from expr_codegen.model import draw_expr_tree
+def draw_deap_expr(expr, gp):
+    """根据DEAP版表达式画图"""
+    nodes, edges, labels = gp.graph(expr)
+    edges = [(edge[1], edge[0]) for edge in edges]
+
+    G = nx.DiGraph()
+    G.add_edges_from(edges)
+    nx.draw(G, labels=labels)
 
 # 画某树
 draw_expr_tree(G, 'GP_0007')

@@ -81,4 +81,4 @@ if __name__ == '__main__':
     names = get_function_annotation(module, startswith)
     txts += gen_code(names)
     #
-    save(txts, 'gp.primitives', write=True)
+    save(txts, 'gp_run.primitives', write=True)

@@ -3,3 +3,4 @@ polars_ta
 tensorboard
 tensorboardX
 more_itertools
+expr_codegen

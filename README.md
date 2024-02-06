@@ -33,6 +33,6 @@ pip install -r requirements.txt
 1. `demo_html.py`: 演示生成网页报表
 2. `demo_notebook.py`: 可直接运行。也可在`VSCode`中通过`Shift+Enter`运行。可以将它做为研发单因子的模板，只要改一行因子表达式即可
 
-## gp 遗传编程
+## gp_base/gp_run 遗传编程
 
 自动大批量生成表达式。可将生成的表达式直接复制到`research/demo_notebook.py`中进行进一步分析
