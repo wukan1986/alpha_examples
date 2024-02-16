@@ -36,3 +36,7 @@ pip install -r requirements.txt
 ## gp_base/gp_run 遗传编程
 
 自动大批量生成表达式。可将生成的表达式直接复制到`research/demo_notebook.py`中进行进一步分析
+
+## transformer 第三方表达转换
+
+演示了`Alpha101`和`Alpha191`转换成`polars_ta`风格表达式
