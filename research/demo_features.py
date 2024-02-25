@@ -32,16 +32,21 @@ def _code_block_():
 
     # 远期收益率
     RETURN_OO_1 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1) - 1
-    RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
+    # RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
     RETURN_OO_5 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1) - 1
-    RETURN_OC_1 = ts_delay(OPEN, -1) / ts_delay(CLOSE, -1) - 1
+    RETURN_OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1) - 1
+    RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
     RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
     RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
 
     # 多个特征，用来进行比较
-    FEATURE_01 = -abs_(cs_standardize_zscore(ts_NATR(HIGH, LOW, CLOSE, 5)))
-    FEATURE_02 = -abs_(cs_standardize_zscore(ts_NATR(HIGH, LOW, CLOSE, 10)))
-    FEATURE_03 = -abs_(cs_standardize_zscore(ts_NATR(HIGH, LOW, CLOSE, 20)))
+    # FEATURE_01 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 5))))
+    # FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 10))))
+    # FEATURE_03 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
+
+    FEATURE_01 = -abs_(cs_standardize_zscore(ts_std_dev(ts_returns(CLOSE, 1), 5)))
+    FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 5))))
+    FEATURE_03 = -abs_(cs_standardize_zscore(cs_rank(ts_std_dev(ts_returns(CLOSE, 1), 5)) - 0.5))
 
 
 # 读取源代码，转成字符串

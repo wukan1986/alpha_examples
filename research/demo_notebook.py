@@ -17,6 +17,7 @@ import polars as pl
 # %% 因子报表
 import matplotlib.pyplot as plt
 from alphainspect.reports import create_2x2_sheet
+from alphainspect.returns import create_returns_sheet
 from alphainspect.utils import with_factor_quantile
 from alphainspect.ic import plot_ic_hist
 
@@ -37,6 +38,10 @@ logger.info('开始生成报表')
 plot_ic_hist(df, factor)
 
 df = with_factor_quantile(df, factor, quantiles=10)
+
+forward_returns = ['RETURN_CC_1', 'RETURN_OO_1', 'RETURN_OO_5', 'RETURN_OO_10', ]  # 同一因子，不同持有期对比
+create_returns_sheet(df, factor, forward_returns)
+
 create_2x2_sheet(df, factor, forward_return, fwd_ret_1, period=period, axvlines=axvlines)
 logger.info('报表已生成')
 

@@ -50,6 +50,7 @@ if __name__ == '__main__':
         'FEATURE_02',
         'FEATURE_03',
         # 'FEATURE_04',
+        # 'FEATURE_05',
     ]
     with multiprocessing.Pool() as pool:
         print(list(pool.map(func, factors)))
