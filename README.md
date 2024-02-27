@@ -29,9 +29,10 @@ pip install -r requirements.txt
 `data`生成测试用数据，它依赖于`codes`目录，而`codes`目录由`codegen`中的脚本生成
 
 ## research 单因子分析示例
-
-1. `demo_html.py`: 演示生成网页报表
-2. `demo_notebook.py`: 可直接运行。也可在`VSCode`中通过`Shift+Enter`运行。可以将它做为研发单因子的模板，只要改一行因子表达式即可
+可以将它做为研发单因子的模板，只要改一行因子表达式即可
+1. `demo_features.py`: 演示准备数和特征
+2. `demo_html.py`: 演示生成网页报表
+3. `demo_notebook.py`: 可直接运行。也可在`VSCode`中通过`Shift+Enter`运行
 
 ## gp_base/gp_run 遗传编程
 

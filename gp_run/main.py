@@ -62,6 +62,7 @@ FITNESS_WEIGHTS = (1.0, 1.0)
 LABEL_y = 'RETURN_OO_1'
 
 # TODO: 数据准备，脚本将取df_input，可运行`data`下脚本生成
+# 如何准备数据请参考`demo_features.py`
 df_input = pl.read_parquet('data/data.parquet')
 dt1 = datetime(2021, 1, 1)
 # ======================================

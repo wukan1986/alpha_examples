@@ -26,7 +26,7 @@ import polars as pl
 
 
 def _code_block_1():
-    # 不能提前filter的代码，filter会导致数据错误
+    # 不能提前filter的代码，提前filter会导致数据错误
 
     # 这里用未复权的价格更合适
     DOJI = four_price_doji(open, high, low, close)
@@ -51,7 +51,7 @@ def _code_block_2():
     # FEATURE_03 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
 
     FEATURE_01 = ts_rank(CLOSE, 5)
-    # FEATURE_02 = cs_neutralize_residual_multiple(ts_rank(CLOSE, 20) ** 3, ts_rank(CLOSE, 20), True)
+    FEATURE_02 = ts_std_dev(ts_returns(CLOSE, 1), 20)
     # FEATURE_03 = ts_rank(CLOSE, 5)
 
 
@@ -88,23 +88,24 @@ FEATURE_PATH = r'M:\data3\T1\feature.parquet'
 
 df = pl.read_parquet(DATA_PATH)
 df = df.rename({'time': 'date', 'code': 'asset', 'money': 'amount'})
-# 提前过滤
+# 计算收益率前，提前过滤。收益率计算时不能跳过st等信息
 df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
 )
+# 准备基础数据
 df = df.with_columns([
     # 后复权
     (pl.col(['open', 'high', 'low', 'close']) * pl.col('factor')).name.map(lambda x: x.upper()),
     # 成交额与成交量对数处理
     pl.col('amount').log1p().alias('LOG_AMOUNT'),
     pl.col('volume').log1p().alias('LOG_VOLUME'),
-    # 添加常数列，也许后面用得上
+    # 添加常数列，也许回归等场景用得上
     pl.lit(1).alias('ONE'),
     pl.lit(0).alias('ZERO'),
 ]).fill_nan(None)  # nan填充成null
-logger.info('数据加载完成')
-
+logger.info('数据准备完成')
+# =====================================
 from research.output1 import main
 
 df = main(df)
@@ -119,6 +120,7 @@ df = main(df)
 df = df.filter(~pl.col('NEXT_DOJI'))
 
 logger.info('特征计算完成')
+# =====================================
 # 推荐保存到内存盘中
 df.write_parquet(FEATURE_PATH)
 logger.info('特征保存完成')
