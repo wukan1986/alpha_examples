@@ -36,14 +36,12 @@ def func(factor):
                              FACTOR=factor,
                              fwd_ret_1='RETURN_OO_1',
                              forward_return='RETURN_OO_5',
-                             period=5)
+                             period=10)
 
     return ret_code
 
 
 if __name__ == '__main__':
-    import multiprocessing
-
     # 没必要设置太大，因为部分计算使用的polars多线程，会将CPU跑满
     factors = [
         'FEATURE_01',
@@ -52,5 +50,7 @@ if __name__ == '__main__':
         # 'FEATURE_04',
         # 'FEATURE_05',
     ]
+    import multiprocessing
+
     with multiprocessing.Pool() as pool:
         print(list(pool.map(func, factors)))
