@@ -36,7 +36,7 @@ def func(factor):
                              FACTOR=factor,
                              fwd_ret_1='RETURN_OO_1',
                              forward_return='RETURN_OO_5',
-                             period=10)
+                             period=5)
 
     return ret_code
 

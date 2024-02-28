@@ -50,8 +50,8 @@ def _code_block_2():
     # FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 10))))
     # FEATURE_03 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
 
-    FEATURE_01 = ts_rank(CLOSE, 5)
-    FEATURE_02 = ts_std_dev(ts_returns(CLOSE, 1), 20)
+    FEATURE_01 = cs_rank(close)
+    # FEATURE_02 = ts_std_dev(ts_returns(CLOSE, 1), 20)
     # FEATURE_03 = ts_rank(CLOSE, 5)
 
 
@@ -92,6 +92,8 @@ df = df.rename({'time': 'date', 'code': 'asset', 'money': 'amount'})
 df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
+    ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
+    ~pl.col('asset').str.starts_with('300'),  # 过滤创业板
 )
 # 准备基础数据
 df = df.with_columns([
@@ -101,8 +103,8 @@ df = df.with_columns([
     pl.col('amount').log1p().alias('LOG_AMOUNT'),
     pl.col('volume').log1p().alias('LOG_VOLUME'),
     # 添加常数列，也许回归等场景用得上
-    pl.lit(1).alias('ONE'),
-    pl.lit(0).alias('ZERO'),
+    pl.lit(1, dtype=pl.Float32).alias('ONE'),
+    pl.lit(0, dtype=pl.Float32).alias('ZERO'),
 ]).fill_nan(None)  # nan填充成null
 logger.info('数据准备完成')
 # =====================================
@@ -110,13 +112,18 @@ from research.output1 import main
 
 df = main(df)
 
-# st不参与后面的计算，也可以设置只计算中证500等
+# 计算出来的结果需要进行部分修复，防止之后计算时出错
+df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))
+# st不参与后面的计算
+# TODO 也可以设置只计算中证500等
 df = df.filter(~pl.col('is_st'))
 
 from research.output2 import main
 
 df = main(df)
-# 明天涨停或跌停，过滤掉
+
+# TODO 过滤掉不参与IC计算和机器学习的记录
+# 过滤明天涨停或跌停
 df = df.filter(~pl.col('NEXT_DOJI'))
 
 logger.info('特征计算完成')
