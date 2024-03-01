@@ -24,15 +24,20 @@ FEATURE_PATH = r'M:\data3\T1\feature.parquet'
 df = pl.read_parquet(FEATURE_PATH)
 print(df.columns)
 
-factors = ['FEATURE_01', 'FEATURE_02', 'FEATURE_03', ]
+factors = ['FEATURE_00',
+           'FEATURE_01',
+           'FEATURE_02',
+           # 'FEATURE_03',
+           ]
 forward_returns = ['RETURN_CC_1', 'RETURN_OO_1', 'RETURN_OO_5', 'RETURN_OO_10', ]  # 同一因子，不同持有期对比
 logger.info('开始生成报表')
 create_ic2_sheet(df, factors, forward_returns)
+logger.info('查看单个因子')
 plt.show()
 
-logger.info('查看单个因子')
 # 需展示的某一个特征
-factor = 'FEATURE_01'
+factor = 'FEATURE_02'
+factor = factors[int(input(f'输入序号：{factors}'))]
 fwd_ret_1 = 'RETURN_OO_1'
 forward_return = 'RETURN_OO_10'
 period = 10

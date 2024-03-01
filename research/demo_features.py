@@ -50,13 +50,13 @@ def _code_block_2():
     # filter后计算的代码
 
     # 多个特征，用来进行比较
-    # FEATURE_01 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 5))))
-    # FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 10))))
-    # FEATURE_03 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
+    # FEATURE_00 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 5))))
+    # FEATURE_01 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 10))))
+    # FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
 
-    FEATURE_01 = -ts_corr(cs_rank(OPEN), cs_rank(LOG_AMOUNT), 20)
-    FEATURE_02 = -ts_corr(cs_rank(CLOSE), cs_rank(LOG_AMOUNT), 20)
-    FEATURE_03 = -ts_corr(cs_rank(OPEN), cs_rank(LOG_VOLUME), 20)
+    FEATURE_00 = -1 * ts_max(ts_corr(ts_rank(LOG_VOLUME, 5), ts_rank(HIGH, 5), 5), 3)
+    FEATURE_01 = -1 * ts_max(ts_corr(ts_rank(LOG_VOLUME, 5), ts_rank(HIGH, 5), 5), 5)
+    FEATURE_02 = -1 * ts_max(ts_corr(ts_rank(LOG_VOLUME, 5), ts_rank(HIGH, 5), 5), 10)
 
 
 def code_to_string(code_block):
