@@ -23,6 +23,7 @@ from loguru import logger
 from sympy_define import *  # noqa
 
 import polars as pl
+import polars.selectors as cs
 
 
 def _code_block_1():
@@ -34,12 +35,15 @@ def _code_block_1():
 
     # 远期收益率
     RETURN_OO_1 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1) - 1
-    # RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
+    RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
     RETURN_OO_5 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1) - 1
     RETURN_OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1) - 1
     RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
     RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
     RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
+
+    # LABEL_OO_5 = cs_winsorize_mad(RETURN_OO_5)
+    LABEL_OO_5 = cs_bucket(cs_winsorize_mad(RETURN_OO_5), 20)
 
 
 def _code_block_2():
@@ -50,9 +54,9 @@ def _code_block_2():
     # FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 10))))
     # FEATURE_03 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
 
-    FEATURE_01 = cs_rank(close)
-    # FEATURE_02 = ts_std_dev(ts_returns(CLOSE, 1), 20)
-    # FEATURE_03 = ts_rank(CLOSE, 5)
+    FEATURE_01 = -ts_corr(cs_rank(OPEN), cs_rank(LOG_AMOUNT), 20)
+    FEATURE_02 = -ts_corr(cs_rank(CLOSE), cs_rank(LOG_AMOUNT), 20)
+    FEATURE_03 = -ts_corr(cs_rank(OPEN), cs_rank(LOG_VOLUME), 20)
 
 
 def code_to_string(code_block):
@@ -93,7 +97,7 @@ df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
     ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
-    ~pl.col('asset').str.starts_with('300'),  # 过滤创业板
+    ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
 )
 # 准备基础数据
 df = df.with_columns([
@@ -125,6 +129,7 @@ df = main(df)
 # TODO 过滤掉不参与IC计算和机器学习的记录
 # 过滤明天涨停或跌停
 df = df.filter(~pl.col('NEXT_DOJI'))
+df = df.with_columns(pl.when(cs.numeric().is_infinite()).then(None).otherwise(cs.numeric()).name.keep()).fill_nan(None)
 
 logger.info('特征计算完成')
 # =====================================

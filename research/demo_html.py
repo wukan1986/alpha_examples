@@ -35,7 +35,7 @@ def func(factor):
                              FEATURE_PATH=FEATURE_PATH,
                              FACTOR=factor,
                              fwd_ret_1='RETURN_OO_1',
-                             forward_return='RETURN_OO_5',
+                             forward_return='LABEL_OO_5',
                              period=5)
 
     return ret_code
