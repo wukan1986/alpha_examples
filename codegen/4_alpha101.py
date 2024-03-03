@@ -20,6 +20,9 @@ from sympy_define import *  # noqa
 def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
 
+    # TODO 由于ts_decay_linear不支持null，暂时用ts_mean代替
+    from polars_ta.prefix.wq import ts_mean as ts_decay_linear  # noqa
+
     # adv{d} = average daily dollar volume for the past d days
     ADV5 = ts_mean(AMOUNT, 5)
     ADV10 = ts_mean(AMOUNT, 10)
@@ -33,6 +36,8 @@ def _code_block_():
     ADV120 = ts_mean(AMOUNT, 120)
     ADV150 = ts_mean(AMOUNT, 150)
     ADV180 = ts_mean(AMOUNT, 180)
+
+    RETURNS = ts_returns(CLOSE, 1)
 
 
 with open('transformer/alpha101_out.txt', 'r') as f:
@@ -48,7 +53,7 @@ codes, G = tool.all(exprs_dict, style='polars', template_file='template.py.j2',
                     replace=True, regroup=True, format=True,
                     date='date', asset='asset',
                     # 还复制了最原始的表达式
-                    extra_codes=())
+                    extra_codes=(raw,))
 
 print(codes)
 #
