@@ -44,10 +44,10 @@ def func(factor):
 if __name__ == '__main__':
     # 没必要设置太大，因为部分计算使用的polars多线程，会将CPU跑满
     factors = [
-        'FEATURE_00',
         'FEATURE_01',
         'FEATURE_02',
-        # 'FEATURE_03',
+        'FEATURE_03',
+        'FEATURE_04',
     ]
     import multiprocessing
 

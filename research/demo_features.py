@@ -44,19 +44,22 @@ def _code_block_1():
 
     # LABEL_OO_5 = cs_winsorize_mad(RETURN_OO_5)
     LABEL_OO_5 = cs_bucket(cs_winsorize_mad(RETURN_OO_5), 20)
+    LABEL_OO_10 = cs_bucket(cs_winsorize_mad(RETURN_OO_10), 20)
 
 
 def _code_block_2():
     # filter后计算的代码
 
-    # 多个特征，用来进行比较
-    # FEATURE_00 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 5))))
-    # FEATURE_01 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 10))))
-    # FEATURE_02 = -abs_(cs_standardize_zscore(cs_winsorize_mad(ts_std_dev(ts_returns(CLOSE, 1), 20))))
-
-    FEATURE_00 = -1 * ts_max(ts_corr(ts_rank(LOG_VOLUME, 5), ts_rank(HIGH, 5), 5), 3)
-    FEATURE_01 = -1 * ts_max(ts_corr(ts_rank(LOG_VOLUME, 5), ts_rank(HIGH, 5), 5), 5)
-    FEATURE_02 = -1 * ts_max(ts_corr(ts_rank(LOG_VOLUME, 5), ts_rank(HIGH, 5), 5), 10)
+    # TODO 本人尝试的pe指标处理方法，不知是否合适，欢迎指点
+    # pe为负已经提前过滤了
+    # 去极值、标准化
+    FEATURE_01 = -abs_(cs_rank(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 5))) - 0.5)
+    # 去极值、行业中性化、标准化
+    FEATURE_02 = -abs_(cs_rank(cs_standardize_zscore(gp_demean(sw_l1, cs_winsorize_mad(1 / pe_ratio, 5)))) - 0.6)
+    # 去极值、市值中性化、标准化
+    FEATURE_03 = -abs_(cs_rank(cs_standardize_zscore(cs_neutralize_residual_multiple(cs_winsorize_mad(1 / pe_ratio, 5), LOG_MKT_CAP, ONE))) - 0.7)
+    # 去极值、行业市值中性化、标准化
+    FEATURE_04 = -abs_(cs_rank(cs_standardize_zscore(cs_neutralize_residual_multiple(cs_winsorize_mad(1 / pe_ratio, 5), LOG_MKT_CAP, CS_SW_L1, ONE))) - 0.7)
 
 
 def code_to_string(code_block):
@@ -69,6 +72,11 @@ def code_to_string(code_block):
                               date='date', asset='asset',
                               # 复制了需要使用的函数，还复制了最原始的表达式
                               extra_codes=(raw,))
+
+    # TODO 这一步非常关键
+    # 生成的代码有部分内容需要提换时，可以使用此方法完成，注意，有多处时，不要改错了其它地方
+    # 本处由于要对行业哑变量进行处理，但表达式的列又是动态变化，不得不用此方法
+    codes = codes.replace(', CS_SW_L1,', r', *cs.expand_selector(df, cs.matches(r"^sw_l1_\d+$")),')
     return codes
 
 
@@ -92,12 +100,14 @@ FEATURE_PATH = r'M:\data3\T1\feature.parquet'
 
 df = pl.read_parquet(DATA_PATH)
 df = df.rename({'time': 'date', 'code': 'asset', 'money': 'amount'})
+print(df.columns)
 # 计算收益率前，提前过滤。收益率计算时不能跳过st等信息
 df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
     ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
     ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
+    pl.col('sw_l1').is_not_null(),  # TODO 没有行业的也过滤，这会不会有问题？
 )
 # 准备基础数据
 df = df.with_columns([
@@ -106,9 +116,12 @@ df = df.with_columns([
     # 成交额与成交量对数处理
     pl.col('amount').log1p().alias('LOG_AMOUNT'),
     pl.col('volume').log1p().alias('LOG_VOLUME'),
+    pl.col('market_cap').log1p().alias('LOG_MKT_CAP'),
     # 添加常数列，也许回归等场景用得上
     pl.lit(1, dtype=pl.Float32).alias('ONE'),
     pl.lit(0, dtype=pl.Float32).alias('ZERO'),
+    # 行业处理，由浮点改成整数
+    pl.col('sw_l1', 'sw_l2', 'sw_l3').cast(pl.UInt32),
 ]).fill_nan(None)  # nan填充成null
 logger.info('数据准备完成')
 # =====================================
@@ -121,6 +134,11 @@ df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))
 # st不参与后面的计算
 # TODO 也可以设置只计算中证500等
 df = df.filter(~pl.col('is_st'))
+df = df.filter(pl.col('pe_ratio') > 0)
+sw_l1 = df.select('sw_l1')
+# TODO drop_first丢弃哪个字段是随机的，非常不友好，只能在行业中性化时动态修改代码
+df = df.to_dummies('sw_l1', drop_first=True)
+df = pl.concat([df, sw_l1], how='horizontal')
 
 from research.output2 import main
 
@@ -129,6 +147,7 @@ df = main(df)
 # TODO 过滤掉不参与IC计算和机器学习的记录
 # 过滤明天涨停或跌停
 df = df.filter(~pl.col('NEXT_DOJI'))
+# 将计算结果中的inf都换成null
 df = df.with_columns(pl.when(cs.numeric().is_infinite()).then(None).otherwise(cs.numeric()).name.keep()).fill_nan(None)
 
 logger.info('特征计算完成')
