@@ -46,7 +46,7 @@ funcs_map = {'TSMIN': 'ts_min',
              'DELAY': 'ts_delay',
              'STD': 'ts_std_dev',
              'CORR': 'ts_corr',
-             'WMA': 'ts_WMA',
+             'WMA': 'ts_WMA',  # ts_decay_linear?
              'PROD': 'ts_product',
              'SEQUENCE': '$',
              'RANK': 'cs_rank',
@@ -66,7 +66,7 @@ funcs_map = {'TSMIN': 'ts_min',
              'ABS': 'abs_',
              'SMA': 'ts_SMA_CN',
              }
-args_map = {}
+args_map = {'HGIH': 'HIGH'}
 targets_map = {}
 
 
