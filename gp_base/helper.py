@@ -163,7 +163,10 @@ def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, spl
     df_train = df.filter(pl.col('date') < split_date)
     df_valid = df.filter(pl.col('date') >= split_date)
 
-    ic_train = df_train.select(cs.numeric().mean())
+    # TODO 有效数不足，生成的意义不大，返回null, 而适应度第0位是nan时不加入名人堂
+    # cs.numeric().count() / cs.numeric().len() >= 0.5
+    # cs.numeric().count() >= 30
+    ic_train = df_train.select(pl.when(cs.numeric().count() / cs.numeric().len() >= 0.5).then(cs.numeric().mean()).otherwise(None))
     ir_train = df_train.select(cs.numeric().mean() / cs.numeric().std(ddof=0))
     ic_valid = df_valid.select(cs.numeric().mean())
     ir_valid = df_valid.select(cs.numeric().mean() / cs.numeric().std(ddof=0))
