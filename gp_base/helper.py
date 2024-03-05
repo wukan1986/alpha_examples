@@ -126,6 +126,7 @@ def population_to_exprs(population, globals_):
 
 
 def filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results):
+    before_len = len(exprs_dict)
     # 清理重复表达式，通过字典特性删除
     exprs_dict = {v: k for k, v in exprs_dict.items()}
     exprs_dict = {v: k for k, v in exprs_dict.items()}
@@ -133,11 +134,14 @@ def filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results):
     exprs_dict = {k: v for k, v in exprs_dict.items() if not is_invalid(v, pset, RET_TYPE)}
     # 清理无意义表达式
     exprs_dict = {k: v for k, v in exprs_dict.items() if not is_meaningless(v)}
+    after_len = len(exprs_dict)
+    logger.info('剔除重复、非法、无意义表达式，数量由 {} -> {}', before_len, after_len)
+
     # 历史表达式不再重复计算
     before_len = len(exprs_dict)
     exprs_dict = {k: v for k, v in exprs_dict.items() if str(v) not in fitness_results}
     after_len = len(exprs_dict)
-    logger.info('剔除历史已经计算过的适应度，数量由 {} -> {}', before_len, after_len)
+    logger.info('剔除历史已经计算过适应度的表达式，数量由 {} -> {}', before_len, after_len)
     return exprs_dict
 
 
