@@ -53,13 +53,13 @@ def _code_block_2():
     # TODO 本人尝试的pe指标处理方法，不知是否合适，欢迎指点
     # pe为负已经提前过滤了
     # 去极值、标准化
-    FEATURE_01 = -abs_(cs_rank(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 5))) - 0.5)
-    # 去极值、行业中性化、标准化
-    FEATURE_02 = -abs_(cs_rank(cs_standardize_zscore(gp_demean(sw_l1, cs_winsorize_mad(1 / pe_ratio, 5)))) - 0.6)
-    # 去极值、市值中性化、标准化
-    FEATURE_03 = -abs_(cs_rank(cs_standardize_zscore(cs_neutralize_residual_multiple(cs_winsorize_mad(1 / pe_ratio, 5), LOG_MKT_CAP, ONE))) - 0.7)
-    # 去极值、行业市值中性化、标准化
-    FEATURE_04 = -abs_(cs_rank(cs_standardize_zscore(cs_neutralize_residual_multiple(cs_winsorize_mad(1 / pe_ratio, 5), LOG_MKT_CAP, CS_SW_L1, ONE))) - 0.7)
+    FEATURE_01 = -abs_(cs_rank(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3))) - 0.5)
+    # 去极值、标准化、行业中性化
+    FEATURE_02 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, ONE)) - 0.65)
+    # 去极值、标准化、市值中性化
+    FEATURE_03 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), LOG_MKT_CAP, ONE)) - 0.7)
+    # 去极值、标准化、行业市值中性化
+    FEATURE_04 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, LOG_MKT_CAP, ONE)) - 0.7)
 
 
 def code_to_string(code_block):
@@ -124,6 +124,7 @@ df = df.with_columns([
     pl.col('sw_l1', 'sw_l2', 'sw_l3').cast(pl.UInt32),
 ]).fill_nan(None)  # nan填充成null
 logger.info('数据准备完成')
+
 # =====================================
 from research.output1 import main
 
@@ -137,8 +138,7 @@ df = df.filter(~pl.col('is_st'))
 df = df.filter(pl.col('pe_ratio') > 0)
 sw_l1 = df.select('sw_l1')
 # TODO drop_first丢弃哪个字段是随机的，非常不友好，只能在行业中性化时动态修改代码
-df = df.to_dummies('sw_l1', drop_first=True)
-df = pl.concat([df, sw_l1], how='horizontal')
+df = df.with_columns(df.to_dummies('sw_l1', drop_first=True))
 
 from research.output2 import main
 
@@ -148,7 +148,7 @@ df = main(df)
 # 过滤明天涨停或跌停
 df = df.filter(~pl.col('NEXT_DOJI'))
 # 将计算结果中的inf都换成null
-df = df.with_columns(pl.when(cs.numeric().is_infinite()).then(None).otherwise(cs.numeric()).name.keep()).fill_nan(None)
+df = df.with_columns(fill_nan(fill_infinite(cs.numeric())).name.keep())
 
 logger.info('特征计算完成')
 # =====================================
