@@ -5,6 +5,17 @@
 
 由于数据准备是一个比较耗时耗力的过程，为了能快速演示，所以这里使用了生成的数据
 """
+import os
+import sys
+from pathlib import Path
+
+# 修改当前目录到上层目录，方便跨不同IDE中使用
+pwd = str(Path(__file__).parents[1])
+os.chdir(pwd)
+sys.path.append(pwd)
+print("pwd:", os.getcwd())
+# ====================
+
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -60,4 +71,4 @@ df = df.shrink_to_fit()
 print(df.tail())
 
 logger.info('保存')
-df.write_parquet('data.parquet')
+df.write_parquet('data/data.parquet')

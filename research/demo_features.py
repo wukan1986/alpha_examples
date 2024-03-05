@@ -51,15 +51,19 @@ def _code_block_2():
     # filter后计算的代码
 
     # TODO 本人尝试的pe指标处理方法，不知是否合适，欢迎指点
+    # 对数市值。去极值，标准化，行业中性化。反向
+    LOG_MKT_CAP_NEUT = -cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(LOG_MKT_CAP, 3)), CS_SW_L1, ONE)
+
     # pe为负已经提前过滤了
+    FEATURE_00 = cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3))
     # 去极值、标准化
     FEATURE_01 = -abs_(cs_rank(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3))) - 0.5)
     # 去极值、标准化、行业中性化
-    FEATURE_02 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, ONE)) - 0.65)
+    FEATURE_02 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, ONE)) - 0.6)
     # 去极值、标准化、市值中性化
-    FEATURE_03 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), LOG_MKT_CAP, ONE)) - 0.7)
+    FEATURE_03 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), LOG_MKT_CAP_NEUT, ONE)) - 0.7)
     # 去极值、标准化、行业市值中性化
-    FEATURE_04 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, LOG_MKT_CAP, ONE)) - 0.7)
+    FEATURE_04 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, LOG_MKT_CAP_NEUT, ONE)) - 0.7)
 
 
 def code_to_string(code_block):
