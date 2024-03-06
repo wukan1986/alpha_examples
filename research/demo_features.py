@@ -74,12 +74,10 @@ def code_to_string(code_block):
     codes, G = ExprTool().all(exprs_dict, style='polars', template_file='template.py.j2',
                               replace=True, regroup=True, format=True,
                               date='date', asset='asset',
+                              # 覆盖`CS_SW_L1 = pl.col("CS_SW_L1")`的定义为正则风格
+                              alias={'CS_SW_L1': r"^sw_l1_\d+$"},
                               # 复制了需要使用的函数，还复制了最原始的表达式
-                              extra_codes=(raw,
-                                           # TODO 非常关键, 需polars_ta>=0.2.0。
-                                           #  覆盖`CS_SW_L1 = pl.col("CS_SW_L1")`的定义为正则风格
-                                           r'CS_SW_L1 = pl.col(r"^sw_l1_\d+$")',
-                                           ))
+                              extra_codes=(raw,))
 
     return codes
 
