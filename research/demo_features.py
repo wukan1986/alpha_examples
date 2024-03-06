@@ -75,12 +75,12 @@ def code_to_string(code_block):
                               replace=True, regroup=True, format=True,
                               date='date', asset='asset',
                               # 复制了需要使用的函数，还复制了最原始的表达式
-                              extra_codes=(raw,))
+                              extra_codes=(raw,
+                                           # TODO 非常关键, 需polars_ta>=0.2.0。
+                                           #  覆盖`CS_SW_L1 = pl.col("CS_SW_L1")`的定义为正则风格
+                                           r'CS_SW_L1 = pl.col(r"^sw_l1_\d+$")',
+                                           ))
 
-    # TODO 这一步非常关键
-    # 生成的代码有部分内容需要提换时，可以使用此方法完成，注意，有多处时，不要改错了其它地方
-    # 本处由于要对行业哑变量进行处理，但表达式的列又是动态变化，不得不用此方法
-    codes = codes.replace(', CS_SW_L1,', r', *cs.expand_selector(df, cs.matches(r"^sw_l1_\d+$")),')
     return codes
 
 
