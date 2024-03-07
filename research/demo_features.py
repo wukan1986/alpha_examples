@@ -42,13 +42,14 @@ def _code_block_1():
     RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
     RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
 
-    # LABEL_OO_5 = cs_winsorize_mad(RETURN_OO_5)
-    LABEL_OO_5 = cs_bucket(cs_winsorize_mad(RETURN_OO_5), 20)
-    LABEL_OO_10 = cs_bucket(cs_winsorize_mad(RETURN_OO_10), 20)
-
 
 def _code_block_2():
     # filter后计算的代码
+
+    # TODO 打标签应当在票池中打，还是在全A中打？
+    # LABEL_OO_5 = cs_winsorize_mad(RETURN_OO_5)
+    LABEL_OO_5 = cs_bucket(cs_winsorize_mad(RETURN_OO_5), 20)
+    LABEL_OO_10 = cs_bucket(cs_winsorize_mad(RETURN_OO_10), 20)
 
     # TODO 本人尝试的pe指标处理方法，不知是否合适，欢迎指点
     # 对数市值。去极值，标准化，行业中性化。反向
