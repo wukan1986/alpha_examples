@@ -69,6 +69,8 @@ def is_invalid(e, pset, ret_type):
 
 def _invalid_atom_infinite(e):
     """无效。单元素。无穷大或无穷小"""
+    if isinstance(e, (int, float)):
+        return True
     # 根是单元素，直接返回
     if e.is_Atom:
         return True
@@ -121,6 +123,7 @@ def population_to_exprs(population, globals_):
     if len(population) == 0:
         return {}
     sources = [f'GP_{i:04d}={stringify_for_sympy(expr)}' for i, expr in enumerate(population)]
+    # sources.insert(0, 'GP_000=1') # DEBUG
     raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources))
     return exprs_dict
 
