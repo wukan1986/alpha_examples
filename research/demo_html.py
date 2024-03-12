@@ -52,5 +52,5 @@ if __name__ == '__main__':
 
     # 没必要设置太大，因为部分计算使用的polars多线程，会将CPU跑满
     # 参考CPU与内存，可以考虑在这填写合适的值，如：4、8
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(4) as pool:
         print(list(pool.map(func, factors)))

@@ -51,20 +51,21 @@ def _code_block_2():
     LABEL_OO_5 = cs_bucket(cs_winsorize_mad(RETURN_OO_5), 20)
     LABEL_OO_10 = cs_bucket(cs_winsorize_mad(RETURN_OO_10), 20)
 
-    # TODO 本人尝试的pe指标处理方法，不知是否合适，欢迎指点
-    # 对数市值。去极值，标准化，行业中性化。反向
-    LOG_MKT_CAP_NEUT = -cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(LOG_MKT_CAP, 3)), CS_SW_L1, ONE)
+    # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
+    # 对数市值。去极值，标准化，行业中性化
+    LOG_MC_ZS = cs_standardize_zscore(cs_winsorize_mad(LOG_MC, 3))
+    LOG_MC_NEUT = cs_neutralize_residual(LOG_MC_ZS, CS_SW_L1, ONE)
 
-    # pe为负已经提前过滤了
-    FEATURE_00 = cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3))
+    # 2017-03-28_海通证券_选股因子系列研究（十八）：价格形态选股因子.pdf
+    FEATURE_00 = cs_standardize_zscore(cs_winsorize_mad(ts_mean(log(high / open), 5), 3))
     # 去极值、标准化
-    FEATURE_01 = -abs_(cs_rank(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3))) - 0.5)
-    # 去极值、标准化、行业中性化
-    FEATURE_02 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, ONE)) - 0.6)
+    FEATURE_01 = FEATURE_00 ** 2 * -1
     # 去极值、标准化、市值中性化
-    FEATURE_03 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), LOG_MKT_CAP_NEUT, ONE)) - 0.7)
+    FEATURE_02 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2 * -1
+    # 去极值、标准化、行业中性化
+    FEATURE_03 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) * -1
     # 去极值、标准化、行业市值中性化
-    FEATURE_04 = -abs_(cs_rank(cs_neutralize_residual_multiple(cs_standardize_zscore(cs_winsorize_mad(1 / pe_ratio, 3)), CS_SW_L1, LOG_MKT_CAP_NEUT, ONE)) - 0.7)
+    FEATURE_04 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) * -1
 
 
 def code_to_string(code_block):
@@ -110,7 +111,7 @@ df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
     ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
-    ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
+    # ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
     pl.col('sw_l1').is_not_null(),  # TODO 没有行业的也过滤，这会不会有问题？
 )
 # 准备基础数据
@@ -120,7 +121,9 @@ df = df.with_columns([
     # 成交额与成交量对数处理
     pl.col('amount').log1p().alias('LOG_AMOUNT'),
     pl.col('volume').log1p().alias('LOG_VOLUME'),
-    pl.col('market_cap').log1p().alias('LOG_MKT_CAP'),
+    (pl.col('amount') / pl.col('volume')).alias('VWAP'),
+    pl.col('market_cap').log1p().alias('LOG_MC'),
+    pl.col('circulating_market_cap').log1p().alias('LOG_FC'),
     # 添加常数列，也许回归等场景用得上
     pl.lit(1, dtype=pl.Float32).alias('ONE'),
     pl.lit(0, dtype=pl.Float32).alias('ZERO'),
@@ -139,7 +142,8 @@ df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))
 # st不参与后面的计算
 # TODO 也可以设置只计算中证500等
 df = df.filter(~pl.col('is_st'))
-df = df.filter(pl.col('pe_ratio') > 0)
+#
+# df = df.filter(pl.col('pe_ratio') > 0)
 sw_l1 = df.select('sw_l1')
 # TODO drop_first丢弃哪个字段是随机的，非常不友好，只能在行业中性化时动态修改代码
 df = df.with_columns(df.to_dummies('sw_l1', drop_first=True))
