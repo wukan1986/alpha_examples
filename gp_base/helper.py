@@ -170,15 +170,27 @@ def root_operator(df: pl.DataFrame):
     这里只对GP_开头的因子添加根算子
 
     """
-    from polars_ta.prefix.wq import ts_zscore
+    from polars_ta.prefix.wq import ts_zscore  # noqa
+    from polars_ta.prefix.wq import cs_winsorize_mad, cs_standardize_zscore  # noqa
 
     def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
         df = df.sort(by=['date'])
         # ========================================
-        df = df.with_columns(ts_zscore(pl.col(r'^GP_\d+$'), 120))
+        df = df.with_columns(
+            ts_zscore(pl.col(r'^GP_\d+$'), 120),
+        )
         return df
 
-    df = df.group_by('asset').map_groups(func_0_ts__asset)
+    def func_0_cs__date(df: pl.DataFrame) -> pl.DataFrame:
+        # ========================================
+        df = df.with_columns(
+            cs_standardize_zscore(cs_winsorize_mad(pl.col(r'^GP_\d+$'))),
+        )
+        return df
+
+    # df = df.group_by('asset').map_groups(func_0_ts__asset)
+    df = df.group_by('date').map_groups(func_0_cs__date)
+    logger.warning("启用了根算子，复制到其它平台时记得手工添加")
 
     return df
 
