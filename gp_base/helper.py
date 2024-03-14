@@ -154,10 +154,42 @@ def fitness_individual(a: str, b: str) -> pl.Expr:
     return pl.corr(a, b, method='spearman', ddof=0, propagate_nans=False)
 
 
+def root_operator(df: pl.DataFrame):
+    """强插一个根算子
+
+    比如挖掘出的因子是
+    ts_SMA(CLOSE, 10)
+    ts_returns(ts_SMA(CLOSE, 20),1)
+
+    这一步相当于在外层套一个ts_zscore，变成
+    ts_zscore(ts_SMA(CLOSE, 10),120)
+    ts_zscore(ts_returns(ts_SMA(CLOSE, 20),1),120)
+
+    注意，复制到其它工具验证时，一定要记得要带上根算子
+
+    这里只对GP_开头的因子添加根算子
+
+    """
+    from polars_ta.prefix.wq import ts_zscore
+
+    def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
+        df = df.sort(by=['date'])
+        # ========================================
+        df = df.with_columns(ts_zscore(pl.col(r'^GP_\d+$'), 120))
+        return df
+
+    df = df.group_by('asset').map_groups(func_0_ts__asset)
+
+    return df
+
+
 def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, split_date: datetime):
     """种群fitness函数"""
     if df is None:
         return {}, {}, {}, {}
+
+    # TODO 是否要强插一个根算子???
+    # df = root_operator(df)
 
     df = df.group_by('date').agg(
         [fitness_individual(X, label) for X in columns]
@@ -239,8 +271,10 @@ def fill_fitness(exprs_old, fitness_results):
             if s0 == s0:  # 非空
                 if s0 > 0.001:  # 样本内打分要大
                     if s0 * 0.6 < s2:  # 样本外打分大于样本内打分的70%
+                        # 可以向fitness添加多个值，但长度要与weight完全一样
                         results.append((s0, s2))
                         continue
+        # 可以向fitness添加多个值，但长度要与weight完全一样
         results.append((np.nan, np.nan))
 
     return results
