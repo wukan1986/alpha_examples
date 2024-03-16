@@ -48,11 +48,16 @@ from deap import base, creator
 from loguru import logger
 import more_itertools
 from ray.util import ActorPool
-
-from gp_base_cs.custom import add_constants, add_operators, add_factors, RET_TYPE
+# ==========================
 # !!! 非常重要。给deap打补丁
 from gp_base_cs.deap_patch import *  # noqa
-from gp_base_cs.helper import print_population, population_to_exprs, filter_exprs, fill_fitness, batched_exprs
+from gp_base_cs.base import print_population, population_to_exprs, filter_exprs
+# ==========================
+# TODO 单资产多因子，计算时序IC,使用gp_base_ts
+# TODO 多资产多因子，计算截面IC,使用gp_base_cs
+from gp_base_cs.custom import add_constants, add_operators, add_factors, RET_TYPE
+from gp_base_cs.helper import batched_exprs, fill_fitness
+# ==========================
 # 引入算子
 # from polars_ta.prefix.talib import *  # noqa
 from polars_ta.prefix.tdx import *  # noqa
@@ -77,7 +82,7 @@ LOG_DIR = Path('log')
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # TODO 初始化时指定要共享的模块，这里用的多资产多因子挖掘
-ray.init(runtime_env={"py_modules": ['gp_base_cs']})
+ray.init(runtime_env={"py_modules": ['gp_base_cs', 'gp_base_ts']})
 
 
 @ray.remote(num_cpus=1)

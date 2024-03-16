@@ -45,12 +45,14 @@ from deap import base, creator
 from loguru import logger
 import more_itertools
 # ==========================
+# !!! 非常重要。给deap打补丁
+from gp_base_cs.deap_patch import *  # noqa
+from gp_base_cs.base import print_population, population_to_exprs, filter_exprs
+# ==========================
 # TODO 单资产多因子，计算时序IC,使用gp_base_ts
 # TODO 多资产多因子，计算截面IC,使用gp_base_cs
 from gp_base_ts.custom import add_constants, add_operators, add_factors, RET_TYPE
-# !!! 非常重要。给deap打补丁
-from gp_base_ts.deap_patch import *  # noqa
-from gp_base_ts.helper import print_population, population_to_exprs, filter_exprs, batched_exprs, fill_fitness
+from gp_base_ts.helper import batched_exprs, fill_fitness
 # ==========================
 # !!! 引入算子
 # from polars_ta.prefix.talib import *  # noqa

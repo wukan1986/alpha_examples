@@ -75,7 +75,7 @@ def add_operators(pset):
     pset.addPrimitive(dummy, [Expr, int], Expr, name='ts_scale')
     pset.addPrimitive(dummy, [Expr, int], Expr, name='ts_zscore')
 
-    # TODO 单资产时，不要添加`cs_`类算子
+    # TODO 时序IC时，不要添加`cs_`类算子
 
     return pset
 
