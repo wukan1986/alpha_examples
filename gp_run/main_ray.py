@@ -49,12 +49,16 @@ from loguru import logger
 import more_itertools
 from ray.util import ActorPool
 
-from gp_base.custom import add_constants, add_operators, add_factors, RET_TYPE
+from gp_base_cs.custom import add_constants, add_operators, add_factors, RET_TYPE
 # !!! 非常重要。给deap打补丁
-from gp_base.deap_patch import *  # noqa
-from gp_base.helper import print_population, population_to_exprs, filter_exprs, fill_fitness, batched_exprs
-# 引入OPEN等
-from sympy_define import *  # noqa
+from gp_base_cs.deap_patch import *  # noqa
+from gp_base_cs.helper import print_population, population_to_exprs, filter_exprs, fill_fitness, batched_exprs
+# 引入算子
+# from polars_ta.prefix.talib import *  # noqa
+from polars_ta.prefix.tdx import *  # noqa
+from polars_ta.prefix.ta import *  # noqa
+from polars_ta.prefix.wq import *  # noqa
+from polars_ta.prefix.cdl import *  # noqa
 
 logger.remove()  # 这行很关键，先删除logger自动产生的handler，不然会出现重复输出的问题
 logger.add(sys.stderr, level='INFO')  # 只输出INFO以上的日志
@@ -72,8 +76,8 @@ dt1 = datetime(2021, 1, 1)
 LOG_DIR = Path('log')
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# 初始化时指定要共享的模块
-ray.init(runtime_env={"py_modules": ['gp_base']})
+# TODO 初始化时指定要共享的模块，这里用的多资产多因子挖掘
+ray.init(runtime_env={"py_modules": ['gp_base_cs']})
 
 
 @ray.remote(num_cpus=1)

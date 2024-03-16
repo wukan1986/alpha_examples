@@ -71,12 +71,11 @@ def add_operators(pset):
     # pset.addPrimitive(dummy, [Expr, Expr, int], Expr, name='ts_corr')
     # pset.addPrimitive(dummy, [Expr, Expr, int], Expr, name='ts_covariance')
 
-    pset.addPrimitive(dummy, [Expr], Expr, name='cs_rank')
-    pset.addPrimitive(dummy, [Expr], Expr, name='cs_scale')
-
     # TODO 其它的`primitive`，可以从`gp/primitives.py`按需复制过来
     pset.addPrimitive(dummy, [Expr, int], Expr, name='ts_scale')
     pset.addPrimitive(dummy, [Expr, int], Expr, name='ts_zscore')
+
+    # TODO 单资产时，不要添加`cs_`类算子
 
     return pset
 

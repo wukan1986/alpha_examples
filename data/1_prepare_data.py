@@ -22,7 +22,7 @@ import polars as pl
 from loguru import logger
 
 _N = 250 * 15
-_K = 500
+_K = 500  # TODO 如要单资产，改此处为1即可
 
 asset = [f's_{i:04d}' for i in range(_K)]
 date = pd.date_range('2015-1-1', periods=_N)

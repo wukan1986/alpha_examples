@@ -9,7 +9,6 @@ from expr_codegen.codes import sources_to_exprs
 from expr_codegen.expr import is_meaningless
 from expr_codegen.tool import ExprTool
 from loguru import logger
-from polars import selectors as cs
 from sympy import preorder_traversal
 
 
@@ -181,15 +180,7 @@ def root_operator(df: pl.DataFrame):
         )
         return df
 
-    def func_0_cs__date(df: pl.DataFrame) -> pl.DataFrame:
-        # ========================================
-        df = df.with_columns(
-            cs_standardize_zscore(cs_winsorize_mad(pl.col(r'^GP_\d+$'))),
-        )
-        return df
-
-    # df = df.group_by('asset').map_groups(func_0_ts__asset)
-    df = df.group_by('date').map_groups(func_0_cs__date)
+    df = df.group_by('asset').map_groups(func_0_ts__asset)
     logger.warning("启用了根算子，复制到其它平台时记得手工添加")
 
     return df
@@ -198,32 +189,23 @@ def root_operator(df: pl.DataFrame):
 def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, split_date: datetime):
     """种群fitness函数"""
     if df is None:
-        return {}, {}, {}, {}
+        return {}, {}
 
     # TODO 是否要强插一个根算子???
     # df = root_operator(df)
 
-    df = df.group_by('date').agg(
-        [fitness_individual(X, label) for X in columns]
-    ).sort(by=['date']).fill_nan(None)
     # 将IC划分成训练集与测试集
     df_train = df.filter(pl.col('date') < split_date)
     df_valid = df.filter(pl.col('date') >= split_date)
 
-    # TODO 有效数不足，生成的意义不大，返回null, 而适应度第0位是nan时不加入名人堂
-    # cs.numeric().count() / cs.numeric().len() >= 0.5
-    # cs.numeric().count() >= 30
-    ic_train = df_train.select(pl.when(cs.numeric().count() / cs.numeric().len() >= 0.5).then(cs.numeric().mean()).otherwise(None))
-    ir_train = df_train.select(cs.numeric().mean() / cs.numeric().std(ddof=0))
-    ic_valid = df_valid.select(cs.numeric().mean())
-    ir_valid = df_valid.select(cs.numeric().mean() / cs.numeric().std(ddof=0))
+    # 时序相关性，没有IR
+    ic_train = df_train.select([fitness_individual(X, label) for X in columns]).fill_nan(None)
+    ic_valid = df_valid.select([fitness_individual(X, label) for X in columns]).fill_nan(None)
 
     ic_train = ic_train.to_dicts()[0]
-    ir_train = ir_train.to_dicts()[0]
     ic_valid = ic_valid.to_dicts()[0]
-    ir_valid = ir_valid.to_dicts()[0]
 
-    return ic_train, ir_train, ic_valid, ir_valid
+    return ic_train, ic_valid
 
 
 def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
@@ -252,7 +234,7 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
     logger.info("{}代{}批 因子 计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", gen, batch_id, elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
 
     # 计算种群适应度
-    ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
+    ic_train, ic_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
     logger.info("{}代{}批 适应度 计算完成", gen, batch_id)
 
     # 样本内外适应度提取
@@ -260,9 +242,7 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
     for k, v in exprs_dict.items():
         v = str(v)
         new_results[v] = {'ic_train': get_fitness(k, ic_train),
-                          'ir_train': get_fitness(k, ir_train),
                           'ic_valid': get_fitness(k, ic_valid),
-                          'ir_valid': get_fitness(k, ir_valid),
                           }
     return new_results
 
@@ -276,15 +256,15 @@ def fill_fitness(exprs_old, fitness_results):
         if d is None:
             logger.debug('{} 不合法/无意义/重复 等原因，在计算前就被剔除了', v)
         else:
-            s0, s1, s2, s3 = d['ic_train'], d['ir_train'], d['ic_valid'], d['ir_valid']
+            s0, s1 = d['ic_train'], d['ic_valid']
             # ic要看绝对值
-            s0, s1, s2, s3 = abs(s0), s1, abs(s2), s3
+            s0, s1 = abs(s0), abs(s1)
             # TODO 这地方要按自己需求定制，过滤太多可能无法输出有效表达式
             if s0 == s0:  # 非空
                 if s0 > 0.001:  # 样本内打分要大
-                    if s0 * 0.6 < s2:  # 样本外打分大于样本内打分的70%
+                    if s0 * 0.6 < s1:  # 样本外打分大于样本内打分的70%
                         # 可以向fitness添加多个值，但长度要与weight完全一样
-                        results.append((s0, s2))
+                        results.append((s0, s1))
                         continue
         # 可以向fitness添加多个值，但长度要与weight完全一样
         results.append((np.nan, np.nan))
