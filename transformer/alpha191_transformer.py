@@ -36,7 +36,7 @@ with open(input_file, 'r', encoding=encoding) as f:
 # ==========================
 # 映射
 funcs_map = {'TSMIN': 'ts_min',
-             'SUM': 'cs_rank',
+             'SUM': 'ts_sum',
              'MEAN': 'ts_mean',
              'SIGN': 'sign',
              'FILTER': '$',
