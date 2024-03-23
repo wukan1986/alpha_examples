@@ -35,37 +35,46 @@ def _code_block_1():
 
     # 远期收益率
     RETURN_OO_1 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1) - 1
-    RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
+    # RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
     RETURN_OO_5 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1) - 1
-    RETURN_OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1) - 1
-    RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
-    RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
-    RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
+    # RETURN_OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1) - 1
+    # RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
+    # RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
+    # RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
 
 
 def _code_block_2():
     # filter后计算的代码
 
     # TODO 打标签应当在票池中打，还是在全A中打？
-    # LABEL_OO_5 = cs_winsorize_mad(RETURN_OO_5)
-    LABEL_OO_5 = cs_bucket(cs_winsorize_mad(RETURN_OO_5), 20)
-    LABEL_OO_10 = cs_bucket(cs_winsorize_mad(RETURN_OO_10), 20)
+    LABEL_OO_5 = cs_mad_zscore(RETURN_OO_5)
+    # LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
 
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
-    # 对数市值。去极值，标准化，行业中性化
-    LOG_MC_ZS = cs_standardize_zscore(cs_winsorize_mad(LOG_MC, 3))
-    LOG_MC_NEUT = cs_neutralize_residual(LOG_MC_ZS, CS_SW_L1, ONE)
+    # 对数市值。去极值，标准化
+    LOG_MC_ZS = cs_mad_zscore(LOG_MC)
+    # 行业中性化
+    # LOG_MC_NEUT = cs_neutralize_residual(LOG_MC_ZS, CS_SW_L1, ONE)
 
-    # 2017-03-28_海通证券_选股因子系列研究（十八）：价格形态选股因子.pdf
-    FEATURE_00 = cs_standardize_zscore(cs_winsorize_mad(ts_mean(log(high / open), 5), 3))
     # 去极值、标准化
-    FEATURE_01 = FEATURE_00 ** 2 * -1
-    # 去极值、标准化、市值中性化
-    FEATURE_02 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2 * -1
-    # 去极值、标准化、行业中性化
-    FEATURE_03 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) * -1
-    # 去极值、标准化、行业市值中性化
-    FEATURE_04 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) * -1
+    FEATURE_00 = cs_mad_zscore(
+        ts_SMA_CN(ts_delta((HIGH + LOW) / 2, 1) * (HIGH - LOW) / LOG_VOLUME, 7, 2)
+    )
+    #
+    FEATURE_01 = FEATURE_00
+    FEATURE_02 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE)
+    FEATURE_03 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE)
+    FEATURE_04 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE)
+    #
+    FEATURE_11 = FEATURE_00 * -1  # 反向
+    FEATURE_12 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) * -1
+    FEATURE_13 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) * -1
+    FEATURE_14 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) * -1
+    #
+    FEATURE_21 = FEATURE_00 ** 2 * -1  # 非线性调整，反向
+    FEATURE_22 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2 * -1  # 市值中性化
+    FEATURE_23 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) ** 2 * -1  # 行业中性化
+    FEATURE_24 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) ** 2 * -1  # 行业市值中性化
 
 
 def code_to_string(code_block):
@@ -111,7 +120,7 @@ df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
     ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
-    # ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
+    ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
     pl.col('sw_l1').is_not_null(),  # TODO 没有行业的也过滤，这会不会有问题？
 )
 # 准备基础数据
@@ -126,7 +135,7 @@ df = df.with_columns([
     pl.col('circulating_market_cap').log1p().alias('LOG_FC'),
     # 添加常数列，也许回归等场景用得上
     pl.lit(1, dtype=pl.Float32).alias('ONE'),
-    pl.lit(0, dtype=pl.Float32).alias('ZERO'),
+    # pl.lit(0, dtype=pl.Float32).alias('ZERO'),
     # 行业处理，由浮点改成整数
     pl.col('sw_l1', 'sw_l2', 'sw_l3').cast(pl.UInt32),
 ]).fill_nan(None)  # nan填充成null
@@ -153,7 +162,7 @@ from research.output2 import main
 df = main(df)
 
 # TODO 过滤掉不参与IC计算和机器学习的记录
-# 过滤明天涨停或跌停
+# !!! 这里的输出即要训练，又要预测，预测时未来数为False不会被剔除
 df = df.filter(~pl.col('NEXT_DOJI'))
 # 将计算结果中的inf都换成null
 df = df.with_columns(fill_nan(fill_infinite(cs.numeric())).name.keep())

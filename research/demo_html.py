@@ -11,46 +11,52 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-# 表达式转换
+import multiprocessing
+from loguru import logger
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
 from alphainspect.reports import ipynb_to_html
 
+# 特征数据文件
+FEATURE_PATH = r'M:\data3\T1\feature.parquet'
+# 输出目录
+output = Path(r'M:\data3\T1\output')
 
-def func(factor):
-    # 特征数据文件
-    FEATURE_PATH = r'M:\data3\T1\feature.parquet'
-    # 输出目录
-    output = Path('research/output')
+output.mkdir(parents=True, exist_ok=True)
 
-    output.mkdir(parents=True, exist_ok=True)
+
+def func(kv):
+    name, factors = kv
+
     ret_code = ipynb_to_html('research/template.ipynb',
-                             output=str(output / f'{factor}.html'),
+                             output=str(output / f'{name}.html'),
                              no_input=True,
-                             no_prompt=False,
+                             no_prompt=True,
                              open_browser=False,
                              # 以下参数转成环境变量自动变成大写
                              PWD=os.getcwd(),
                              FEATURE_PATH=FEATURE_PATH,
-                             FACTOR=factor,
+                             FACTORS=factors,
                              fwd_ret_1='RETURN_OO_1',
                              forward_return='LABEL_OO_5',
-                             periods=(2, 5, 10))
+                             period=5)
 
     return ret_code
 
 
 if __name__ == '__main__':
-    factors = [
-        'FEATURE_01',
-        'FEATURE_02',
-        'FEATURE_03',
-        'FEATURE_04',
-    ]
-    import multiprocessing
+    # 1去极值标准化/2市值中性化/3行业中性化/4行业市值中性化
+    factors2 = {
+        "0_正向": ['FEATURE_01', 'FEATURE_02', 'FEATURE_03', 'FEATURE_04', ],
+        "1_反向": ['FEATURE_11', 'FEATURE_12', 'FEATURE_13', 'FEATURE_14', ],
+        "2_非线": ['FEATURE_21', 'FEATURE_22', 'FEATURE_23', 'FEATURE_24', ],
+    }
 
+    logger.info('开始')
     # 没必要设置太大，因为部分计算使用的polars多线程，会将CPU跑满
     # 参考CPU与内存，可以考虑在这填写合适的值，如：4、8
-    with multiprocessing.Pool(4) as pool:
-        print(list(pool.map(func, factors)))
+    with multiprocessing.Pool(3) as pool:
+        print(list(pool.map(func, factors2.items())))
+    logger.info('结束')
+    os.system(f'explorer.exe "{output}"')

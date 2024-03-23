@@ -12,7 +12,7 @@ print("pwd:", os.getcwd())
 # %% 因子报表
 import matplotlib.pyplot as plt
 import polars as pl
-from alphainspect.ic import plot_ic_hist, create_ic2_sheet
+from alphainspect.ic import create_ic2_sheet
 from alphainspect.reports import create_2x2_sheet
 from alphainspect.returns import create_returns_sheet
 from alphainspect.utils import with_factor_quantile
@@ -43,8 +43,6 @@ fwd_ret_1 = 'RETURN_OO_1'
 forward_return = 'RETURN_OO_10'
 period = 10
 axvlines = ('2023-01-01',)
-# 画ic的直方图函数，也可以用来画普通数值
-plot_ic_hist(df, factor)
 
 df = with_factor_quantile(df, factor, quantiles=10)
 forward_returns = ['RETURN_CC_1', 'RETURN_OO_1', 'RETURN_OO_5', 'RETURN_OO_10', ]
