@@ -61,20 +61,25 @@ def _code_block_2():
         ts_SMA_CN(ts_delta((HIGH + LOW) / 2, 1) * (HIGH - LOW) / LOG_VOLUME, 7, 2)
     )
     #
-    FEATURE_01 = FEATURE_00
-    FEATURE_02 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE)
-    FEATURE_03 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE)
-    FEATURE_04 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE)
+    FEATURE_11 = FEATURE_00
+    FEATURE_12 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE)
+    FEATURE_13 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE)
+    FEATURE_14 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE)
     #
-    FEATURE_11 = FEATURE_00 * -1  # 反向
-    FEATURE_12 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) * -1
-    FEATURE_13 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) * -1
-    FEATURE_14 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) * -1
+    FEATURE_21 = FEATURE_00 * -1  # 反向
+    FEATURE_22 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) * -1
+    FEATURE_23 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) * -1
+    FEATURE_24 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) * -1
     #
-    FEATURE_21 = FEATURE_00 ** 2 * -1  # 非线性调整，反向
-    FEATURE_22 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2 * -1  # 市值中性化
-    FEATURE_23 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) ** 2 * -1  # 行业中性化
-    FEATURE_24 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) ** 2 * -1  # 行业市值中性化
+    FEATURE_31 = FEATURE_00 ** 2 * -1  # 非线性调整，反向
+    FEATURE_32 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2 * -1  # 市值中性化
+    FEATURE_33 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) ** 2 * -1  # 行业中性化
+    FEATURE_34 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) ** 2 * -1  # 行业市值中性化
+    #
+    # FEATURE_41 = FEATURE_00 ** 2  # 非线性调整
+    # FEATURE_42 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2
+    # FEATURE_43 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) ** 2
+    # FEATURE_44 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) ** 2
 
 
 def code_to_string(code_block):
@@ -120,7 +125,7 @@ df = df.filter(
     pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
     pl.col('paused') == 0,  # 过滤停牌
     ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
-    ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
+    # ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
     pl.col('sw_l1').is_not_null(),  # TODO 没有行业的也过滤，这会不会有问题？
 )
 # 准备基础数据
