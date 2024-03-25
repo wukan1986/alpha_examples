@@ -26,13 +26,15 @@ sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
 import multiprocessing
-from loguru import logger
+
+import matplotlib.pyplot as plt
 import polars as pl
+from alphainspect.reports import create_1x3_sheet, fig_to_img, html_template
+from alphainspect.utils import with_factor_quantile
+from loguru import logger
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
-from alphainspect.utils import with_factor_quantile
-from alphainspect.reports import create_1x3_sheet, fig_to_img, html_template
 
 # 特征数据文件
 FEATURE_PATH = r'M:\data3\T1\feature.parquet'
@@ -48,25 +50,34 @@ def func(kv):
     forward_return = 'LABEL_OO_5'
     period = 5
     axvlines = ('2023-01-01',)
+    quantiles = 10
 
     df = pl.read_parquet(FEATURE_PATH, columns=['date', 'asset'] + [forward_return, fwd_ret_1] + factors, use_pyarrow=True)
 
     for factor in factors:
-        df = with_factor_quantile(df, factor, quantiles=10, factor_quantile=f'_fq_{factor}')
+        df = with_factor_quantile(df, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
 
     tbl = {}
     imgs = []
     for factor in factors:
         fig, ic_dict, hist_dict, df_cum_ret = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
                                                                period=period, factor_quantile=f'_fq_{factor}',
-                                                               figsize=(12, 4), axvlines=axvlines)
-
+                                                               figsize=(12, 3), axvlines=axvlines)
         s1 = df_cum_ret.iloc[-1]
-        s2 = pd.Series(ic_dict | hist_dict)
+        s2 = pd.Series(hist_dict | ic_dict)
         tbl[factor] = pd.concat([s1, s2])
         imgs.append(fig_to_img(fig))
 
-    txt1 = pd.DataFrame(tbl).T.to_html(float_format=lambda x: format(x, '.4f'))
+    # 各指标柱状图
+    tbl = pd.DataFrame(tbl)
+    fig, ax = plt.subplots(1, 1, figsize=(12, 2))
+    ax1 = tbl.iloc[:quantiles].plot.bar(ax=ax)
+    plt.xticks(rotation=0)
+    imgs.insert(0, fig_to_img(fig))
+
+    # 表格
+    txt1 = tbl.T.to_html(float_format=lambda x: format(x, '.4f'))
+    # 图
     txt2 = '\n'.join(imgs)
     tpl = html_template.replace('{{body}}', f'{txt1}\n{txt2}')
 

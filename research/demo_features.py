@@ -53,13 +53,18 @@ def _code_block_2():
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
     # 对数市值。去极值，标准化
     LOG_MC_ZS = cs_mad_zscore(LOG_MC)
-    # 行业中性化
-    # LOG_MC_NEUT = cs_neutralize_residual(LOG_MC_ZS, CS_SW_L1, ONE)
+    # 对数市值。行业中性化
+    LOG_MC_NEUT = cs_mad_zscore_resid(LOG_MC_ZS, CS_SW_L1, ONE)
+    # 非线性市值，中市值因子
+    LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 3, LOG_MC, ONE))
+    # 为何2次方看起来与3次方效果一样？
+    # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 2, LOG_MC, ONE))
 
     # 去极值、标准化
     FEATURE_00 = cs_mad_zscore(
-        ts_SMA_CN(ts_delta((HIGH + LOW) / 2, 1) * (HIGH - LOW) / LOG_VOLUME, 7, 2)
+        ts_mean(high / open, 5)
     )
+
     #
     FEATURE_11 = FEATURE_00
     FEATURE_12 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE)
