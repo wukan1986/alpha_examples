@@ -60,10 +60,13 @@ def _code_block_2():
     # 为何2次方看起来与3次方效果一样？
     # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 2, LOG_MC, ONE))
 
-    # 去极值、标准化
-    FEATURE_00 = cs_mad_zscore(
-        ts_mean(high / open, 5)
-    )
+    # 原表达式
+    FEATURE_99 = ts_mean(high / open, 5)
+    # 非线性处理，先去极值，然后rank，然后平移后平方。请按需启用
+    FEATURE_00 = cs_mad_rank2(FEATURE_99, 0.4)
+    # 去极值再标准化。请按需启用
+    # FEATURE_00 = cs_mad_zscore(FEATURE_99)
+    #
 
     #
     FEATURE_11 = FEATURE_00
@@ -133,21 +136,23 @@ df = df.filter(
     # ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
     pl.col('sw_l1').is_not_null(),  # TODO 没有行业的也过滤，这会不会有问题？
 )
-# 准备基础数据
 df = df.with_columns([
-    # 后复权
-    (pl.col(['open', 'high', 'low', 'close']) * pl.col('factor')).name.map(lambda x: x.upper()),
+    # 添加常数列，回归等场景用得上
+    pl.lit(1, dtype=pl.Float32).alias('ONE'),
+    # 成交均价
+    (pl.col('amount') / pl.col('volume')).alias('vwap'),
     # 成交额与成交量对数处理
     pl.col('amount').log1p().alias('LOG_AMOUNT'),
     pl.col('volume').log1p().alias('LOG_VOLUME'),
-    (pl.col('amount') / pl.col('volume')).alias('VWAP'),
     pl.col('market_cap').log1p().alias('LOG_MC'),
     pl.col('circulating_market_cap').log1p().alias('LOG_FC'),
-    # 添加常数列，也许回归等场景用得上
-    pl.lit(1, dtype=pl.Float32).alias('ONE'),
-    # pl.lit(0, dtype=pl.Float32).alias('ZERO'),
     # 行业处理，由浮点改成整数
     pl.col('sw_l1', 'sw_l2', 'sw_l3').cast(pl.UInt32),
+])
+# 准备基础数据
+df = df.with_columns([
+    # 后复权
+    (pl.col(['open', 'high', 'low', 'close', 'vwap']) * pl.col('factor')).name.map(lambda x: x.upper()),
 ]).fill_nan(None)  # nan填充成null
 logger.info('数据准备完成')
 
@@ -171,9 +176,6 @@ from research.output2 import main
 
 df = main(df)
 
-# TODO 过滤掉不参与IC计算和机器学习的记录
-# !!! 这里的输出即要训练，又要预测，预测时未来数为False不会被剔除
-df = df.filter(~pl.col('NEXT_DOJI'))
 # 将计算结果中的inf都换成null
 df = df.with_columns(fill_nan(fill_infinite(cs.numeric())).name.keep())
 
