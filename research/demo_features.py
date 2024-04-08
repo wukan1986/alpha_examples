@@ -62,6 +62,10 @@ def _code_block_2():
     # 为何2次方看起来与3次方效果一样？
     # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 2, LOG_MC, ONE))
 
+    # 风控指标，不参与机器学习，但参与最后的下单过滤
+    R_01 = CLOSE / ts_mean(CLOSE, 5)
+    R_02 = ts_mean(CLOSE, 5) / ts_mean(CLOSE, 10)
+
     # 原表达式
     _1 = ts_mean(high / open, 5)
 

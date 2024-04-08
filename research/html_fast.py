@@ -30,7 +30,7 @@ import multiprocessing
 import matplotlib.pyplot as plt
 import polars as pl
 from alphainspect.reports import create_1x3_sheet, fig_to_img, html_template
-from alphainspect.utils import with_factor_quantile
+from alphainspect.utils import with_factor_quantile, with_quantile_tradable
 from loguru import logger
 
 # 导入OPEN等特征
@@ -55,6 +55,8 @@ def func(kv):
     df = pl.read_parquet(FEATURE_PATH, columns=['date', 'asset', 'NEXT_DOJI'] + [forward_return, fwd_ret_1] + factors, use_pyarrow=True)
     for factor in factors:
         df = with_factor_quantile(df, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
+        # 明日涨跌停分到-1组
+        df = with_quantile_tradable(df, f'_fq_{factor}', 'NEXT_DOJI')
 
     tbl = {}
     imgs = []
@@ -62,7 +64,6 @@ def func(kv):
         fig, ic_dict, hist_dict, df_cum_ret = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
                                                                period=period,
                                                                factor_quantile=f'_fq_{factor}',
-                                                               drop_price_limit='NEXT_DOJI',
                                                                figsize=(12, 3),
                                                                axvlines=axvlines)
         s1 = df_cum_ret.iloc[-1]
