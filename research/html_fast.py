@@ -66,8 +66,9 @@ def func(kv):
                                                                figsize=(12, 3),
                                                                axvlines=axvlines)
         s1 = df_cum_ret.iloc[-1]
-        s2 = pd.Series(ic_dict | hist_dict)
-        tbl[factor] = pd.concat([s1, s2])
+        s2 = {'monotonic': np.sign(s1.diff()).sum()}
+        s3 = pd.Series(s2 | ic_dict | hist_dict)
+        tbl[factor] = pd.concat([s1, s3])
         imgs.append(fig_to_img(fig))
 
     # 各指标柱状图
@@ -75,6 +76,7 @@ def func(kv):
     fig, ax = plt.subplots(1, 1, figsize=(12, 2))
     ax1 = tbl.iloc[:quantiles].plot.bar(ax=ax)
     plt.xticks(rotation=0)
+    plt.legend(loc='upper left')
     imgs.insert(0, fig_to_img(fig))
 
     # 表格
@@ -92,16 +94,28 @@ def func(kv):
 if __name__ == '__main__':
     # 1去极值标准化/2市值中性化/3行业中性化/4行业市值中性化
     factors2 = {
-        "1_线性正向": ['FEATURE_11', 'FEATURE_12', 'FEATURE_13', 'FEATURE_14', ],
-        "2_线性反向": ['FEATURE_21', 'FEATURE_22', 'FEATURE_23', 'FEATURE_24', ],
-        "3_非线反向": ['FEATURE_31', 'FEATURE_32', 'FEATURE_33', 'FEATURE_34', ],
-        # "4_非线正向": ['FEATURE_41', 'FEATURE_42', 'FEATURE_43', 'FEATURE_44', ],
+        "1_线性正向": ['F_11', 'F_12', 'F_13', 'F_14', ],
+        "2_参数对比": [
+            # 'F_005',
+            # 'F_010',
+            # 'F_015',
+            # 'F_020',
+            # 'F_025',
+            'F_030',
+            'F_035',
+            'F_040',
+            'F_045',
+            'F_050',
+            'F_055',
+            # 'F_060',
+            # 'F_065',
+        ],
     }
     t0 = time.perf_counter()
     logger.info('开始')
     # 没必要设置太大，因为部分计算使用的polars多线程，会将CPU跑满
     # 参考CPU与内存，可以考虑在这填写合适的值，如：4、8
-    with multiprocessing.Pool(4) as pool:
+    with multiprocessing.Pool(2) as pool:
         print(list(pool.map(func, factors2.items())))
     logger.info('结束')
     logger.info(f'耗时：{time.perf_counter() - t0:.2f}s')

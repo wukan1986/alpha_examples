@@ -12,6 +12,7 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
+import re
 import inspect
 from datetime import datetime
 
@@ -35,7 +36,7 @@ def _code_block_1():
 
     # 远期收益率
     RETURN_OO_1 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1) - 1
-    # RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
+    RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
     RETURN_OO_5 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1) - 1
     # RETURN_OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1) - 1
     # RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
@@ -47,6 +48,7 @@ def _code_block_2():
     # filter后计算的代码
 
     # TODO 打标签应当在票池中打，还是在全A中打？
+    LABEL_OO_2 = cs_mad_zscore(RETURN_OO_2)
     LABEL_OO_5 = cs_mad_zscore(RETURN_OO_5)
     # LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
 
@@ -54,43 +56,39 @@ def _code_block_2():
     # 对数市值。去极值，标准化
     LOG_MC_ZS = cs_mad_zscore(LOG_MC)
     # 对数市值。行业中性化
-    LOG_MC_NEUT = cs_mad_zscore_resid(LOG_MC_ZS, CS_SW_L1, ONE)
+    # LOG_MC_NEUT = cs_mad_zscore_resid(LOG_MC_ZS, CS_SW_L1, ONE)
     # 非线性市值，中市值因子
-    LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 3, LOG_MC, ONE))
+    # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 3, LOG_MC, ONE))
     # 为何2次方看起来与3次方效果一样？
     # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 2, LOG_MC, ONE))
 
     # 原表达式
-    FEATURE_99 = ts_mean(high / open, 5)
-    # 非线性处理，先去极值，然后rank，然后平移后平方。请按需启用
-    FEATURE_00 = cs_mad_rank2(FEATURE_99, 0.4)
-    # 去极值再标准化。请按需启用
-    # FEATURE_00 = cs_mad_zscore(FEATURE_99)
+    _1 = ts_mean(high / open, 5)
+
+    # 去极值、标准化、中性化
+    F_11 = cs_mad_zscore(_1)
+    F_12 = cs_mad_zscore_resid(_1, LOG_MC_ZS, ONE)
+    F_13 = cs_mad_zscore_resid(_1, CS_SW_L1, ONE)
+    F_14 = cs_mad_zscore_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
+
+    F_00 = F_12
+    # 非线性处理，rank平移后平方
+    # F_010 = cs_rank2(F_00, 0.10) * -1
+    # F_015 = cs_rank2(F_00, 0.15) * -1
+    # F_020 = cs_rank2(F_00, 0.20) * -1
+    # F_025 = cs_rank2(F_00, 0.25) * -1
+    F_030 = cs_rank2(F_00, 0.30) * -1
+    F_035 = cs_rank2(F_00, 0.35) * -1
+    F_040 = cs_rank2(F_00, 0.40) * -1
+    F_045 = cs_rank2(F_00, 0.45) * -1
+    F_050 = cs_rank2(F_00, 0.50) * -1
+    F_055 = cs_rank2(F_00, 0.55) * -1
+    # F_060 = cs_rank2(F_00, 0.60) * -1
+    # F_065 = cs_rank2(F_00, 0.65) * -1
     #
 
-    #
-    FEATURE_11 = FEATURE_00
-    FEATURE_12 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE)
-    FEATURE_13 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE)
-    FEATURE_14 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE)
-    #
-    FEATURE_21 = FEATURE_00 * -1  # 反向
-    FEATURE_22 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) * -1
-    FEATURE_23 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) * -1
-    FEATURE_24 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) * -1
-    #
-    FEATURE_31 = FEATURE_00 ** 2 * -1  # 非线性调整，反向
-    FEATURE_32 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2 * -1  # 市值中性化
-    FEATURE_33 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) ** 2 * -1  # 行业中性化
-    FEATURE_34 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) ** 2 * -1  # 行业市值中性化
-    #
-    # FEATURE_41 = FEATURE_00 ** 2  # 非线性调整
-    # FEATURE_42 = cs_neutralize_residual(FEATURE_00, LOG_MC_ZS, ONE) ** 2
-    # FEATURE_43 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, ONE) ** 2
-    # FEATURE_44 = cs_neutralize_residual(FEATURE_00, CS_SW_L1, LOG_MC_ZS, ONE) ** 2
 
-
-def code_to_string(code_block):
+def code_to_string(code_block, sw_l1_columns):
     source = inspect.getsource(code_block)
     raw, exprs_dict = sources_to_exprs(globals().copy(), source, safe=False)
 
@@ -100,25 +98,19 @@ def code_to_string(code_block):
                               date='date', asset='asset',
                               # 复制了需要使用的函数，还复制了最原始的表达式
                               extra_codes=(raw,
+
                                            # 覆盖`CS_SW_L1 = pl.col("CS_SW_L1")`的定义为正则风格
-                                           r'CS_SW_L1 = pl.struct(r"^sw_l1_\d+$")'
+                                           # r'CS_SW_L1 = pl.struct(r"^sw_l1_\d+$")'
+
+                                           # num.lstsq不支持pl.struct
+                                           rf'CS_SW_L1 = {sw_l1_columns}'
                                            ))
+    # num.lstsq不支持pl.struct
+    codes = codes.replace(', CS_SW_L1', ', *CS_SW_L1')
 
     return codes
 
 
-# ======================================
-# 保存代码到指定文件
-output_file = 'research/output1.py'
-with open(output_file, 'w', encoding='utf-8') as f:
-    f.write(code_to_string(_code_block_1))
-
-# 保存代码到指定文件
-output_file = 'research/output2.py'
-with open(output_file, 'w', encoding='utf-8') as f:
-    f.write(code_to_string(_code_block_2))
-
-logger.info('转码完成')
 # =======================================
 # %% 生成因子
 # 由于读写多，推荐放到内存盘
@@ -154,8 +146,24 @@ df = df.with_columns([
     # 后复权
     (pl.col(['open', 'high', 'low', 'close', 'vwap']) * pl.col('factor')).name.map(lambda x: x.upper()),
 ]).fill_nan(None)  # nan填充成null
+
+# TODO drop_first丢弃哪个字段是随机的，非常不友好，只能在行业中性化时动态修改代码
+df = df.with_columns(df.to_dummies('sw_l1', drop_first=True))
+sw_l1_columns = list(filter(lambda x: re.search(r"^sw_l1_\d+$", x), df.columns))
+print(sw_l1_columns)
+
 logger.info('数据准备完成')
 
+# =====================================
+output_file = 'research/output1.py'
+with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(code_to_string(_code_block_1, []))
+
+output_file = 'research/output2.py'
+with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(code_to_string(_code_block_2, sw_l1_columns))
+
+logger.info('转码完成')
 # =====================================
 from research.output1 import main
 
@@ -166,18 +174,14 @@ df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))
 # st不参与后面的计算
 # TODO 也可以设置只计算中证500等
 df = df.filter(~pl.col('is_st'))
-#
-# df = df.filter(pl.col('pe_ratio') > 0)
-sw_l1 = df.select('sw_l1')
-# TODO drop_first丢弃哪个字段是随机的，非常不友好，只能在行业中性化时动态修改代码
-df = df.with_columns(df.to_dummies('sw_l1', drop_first=True))
-
+# df = df.filter(pl.col('close') >= 3)
+# =====================================
 from research.output2 import main
 
 df = main(df)
 
 # 将计算结果中的inf都换成null
-df = df.with_columns(fill_nan(fill_infinite(cs.numeric())).name.keep())
+df = df.with_columns(fill_nan(purify(cs.numeric())))
 
 logger.info('特征计算完成')
 # =====================================
