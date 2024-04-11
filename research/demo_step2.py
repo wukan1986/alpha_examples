@@ -86,14 +86,10 @@ def code_to_string(code_block, sw_l1_columns):
                               date='date', asset='asset',
                               # 复制了需要使用的函数，还复制了最原始的表达式
                               extra_codes=(raw,
-
-                                           # 覆盖`CS_SW_L1 = pl.col("CS_SW_L1")`的定义为正则风格
-                                           # r'CS_SW_L1 = pl.struct(r"^sw_l1_\d+$")'
-
-                                           # num.lstsq不支持pl.struct
-                                           rf'CS_SW_L1 = {sw_l1_columns}'
+                                           # 传入多个列的方法
+                                           rf'CS_SW_L1 = [pl.col(i) for i in {sw_l1_columns}]',
                                            ))
-    # num.lstsq不支持pl.struct
+    # 传入多个列的方法
     codes = codes.replace(', CS_SW_L1', ', *CS_SW_L1')
 
     return codes
