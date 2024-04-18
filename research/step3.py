@@ -3,7 +3,7 @@
 """
 import os
 import sys
-import time
+
 from pathlib import Path
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -12,6 +12,7 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
+import time
 import multiprocessing
 
 import matplotlib.pyplot as plt
@@ -88,13 +89,13 @@ if __name__ == '__main__':
             # 'F_010',
             # 'F_015',
             # 'F_020',
-            # 'F_025',
+            'F_025',
             'F_030',
             'F_035',
-            'F_040',
-            'F_045',
-            'F_050',
-            'F_055',
+            # 'F_040',
+            # 'F_045',
+            # 'F_050',
+            # 'F_055',
             # 'F_060',
             # 'F_065',
         ],

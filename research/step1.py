@@ -16,15 +16,16 @@ import polars.selectors as cs
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
-from research.demo_step2 import code_to_string
+from research.step2 import code_to_string
 
 
 def _code_block_1():
     # 不能跳过停牌的相关信息。如成份股相关处理
 
-    # 注意：收益没有减1，停牌时值为1
+    # 注意：收益没有减1，停牌时值为1。也没有平移
     ROCR = CLOSE / ts_delay(CLOSE, 1)
-    # 不少数据源每月底更新，而不是每天更新，所以需要用以下方法推算
+
+    # 不少成份股数据源每月底更新，而不是每天更新，所以需要用以下方法推算
     # 注意1：在成份股调整月，如果缺少调整日的权重信息当月后一段的数据不准确
     # 注意2：不在成份股的权重要为0，否则影响之后计算，所以停牌也得保留
     # SSE50 = cs_scale(ts_zip_prod(cs_fill_zero(sz50), ROCR), 100)
@@ -58,6 +59,7 @@ DATA_PATH = r'M:\data3\T1\data.parquet'
 FEATURE_PATH = r'M:\data3\T1\feature1.parquet'
 
 if __name__ == '__main__':
+    logger.info('数据准备, {}', DATA_PATH)
     df = pl.read_parquet(DATA_PATH)
     df = df.rename({'time': 'date', 'code': 'asset', 'money': 'amount'})
     print(df.columns)
@@ -118,4 +120,4 @@ if __name__ == '__main__':
 
     # 推荐保存到内存盘中
     df.write_parquet(FEATURE_PATH)
-    logger.info('特征保存完成')
+    logger.info('特征保存完成, {}', FEATURE_PATH)

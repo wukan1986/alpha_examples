@@ -32,13 +32,15 @@ pip install -r requirements.txt
 
 可以将它做为研发单因子的模板，只要改一行因子表达式即可
 
-1. `demo_features.py`: 演示准备数和特征
-2. `demo_html.py`: 演示生成网页报表
-3. `demo_notebook.py`: 可直接运行。也可在`VSCode`中通过`Shift+Enter`运行
+1. `step1.py`: 演示准备数据
+2. `step2.py`: 演示特征的研究
+3. `step3.py`: 生成报表
+4. `step4.py`: 修改于`step2.py`，用于生成多个特征
+5. `step5.py`: 比较多个特证的相关性
 
 ## gp_base_cs/gp_base_ts/gp_run 遗传编程
 
-自动大批量生成表达式。可将生成的表达式直接复制到`research/demo_features.py`、`research/demo_html.py`中进行进一步分析
+自动大批量生成表达式。可将生成的表达式直接复制到`research/step2.py`、`research/step3.py`中进行进一步分析
 
 ## transformer 第三方表达转换
 
