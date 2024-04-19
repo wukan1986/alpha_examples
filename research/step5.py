@@ -17,8 +17,8 @@ from alphainspect.ic import create_ic2_sheet
 from alphainspect.selection import drop_above_corr_thresh
 from alphainspect.utils import select_by_suffix
 
-FEATURE_PATH = r'M:\data3\T1\feature.parquet'
-df_output = pl.read_parquet(FEATURE_PATH)
+INPUT_PATH = r'M:\data3\T1\feature2.parquet'
+df_output = pl.read_parquet(INPUT_PATH)
 
 # x = df_output.filter(pl.col('date') == datetime(2024, 4, 12))
 # %%

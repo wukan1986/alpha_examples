@@ -12,7 +12,6 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-from datetime import datetime
 import re
 import inspect
 
@@ -38,12 +37,12 @@ def _code_block_3():
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
     # 对数市值。去极值，标准化
     LOG_MC_ZS = cs_mad_zscore(LOG_MC)
-    # 对数市值。行业中性化
+    # # 对数市值。行业中性化
     # LOG_MC_NEUT = cs_mad_zscore_resid(LOG_MC_ZS, CS_SW_L1, ONE)
-    # 非线性市值，中市值因子
-    # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 3, LOG_MC, ONE))
-    # 为何2次方看起来与3次方效果一样？
-    # LOG_MC_NL = cs_mad_zscore(cs_neutralize_residual(LOG_MC ** 2, LOG_MC, ONE))
+    # # 非线性市值，中市值因子
+    # LOG_MC_NL = cs_mad_zscore(cs_resid(LOG_MC ** 3, LOG_MC, ONE))
+    # # 为何2次方看起来与3次方效果一样？
+    # LOG_MC_NL = cs_mad_zscore(cs_resid(LOG_MC ** 2, LOG_MC, ONE))
 
     # 风控指标，不参与机器学习，但参与最后的下单过滤
     R_01 = CLOSE / ts_mean(CLOSE, 5) - 1
@@ -51,13 +50,20 @@ def _code_block_3():
     R_03 = close / 3 - 1
 
     # 原表达式
-    _1 = ts_mean(high / low, 10)
+    # _1 = ts_mean(high / low, 10)
+    _1 = ts_mean(amount, 20) * -1
 
     # 去极值、标准化、中性化
     F_11 = cs_mad_zscore(_1)
     F_12 = cs_mad_zscore_resid(_1, LOG_MC_ZS, ONE)
     F_13 = cs_mad_zscore_resid(_1, CS_SW_L1, ONE)
     F_14 = cs_mad_zscore_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
+
+    # 中性化
+    # F_11 = _1
+    # F_12 = cs_resid(_1, LOG_MC_ZS, ONE)
+    # F_13 = cs_resid(_1, CS_SW_L1, ONE)
+    # F_14 = cs_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
 
     F_00 = F_11
     # 非线性处理，rank平移后平方
@@ -76,7 +82,7 @@ def _code_block_3():
     #
 
 
-def code_to_string(code_block, sw_l1_columns):
+def code_to_string(code_block):
     source = inspect.getsource(code_block)
     raw, exprs_dict = sources_to_exprs(globals().copy(), source, safe=False)
 
@@ -97,18 +103,16 @@ def code_to_string(code_block, sw_l1_columns):
 
 
 if __name__ == '__main__':
-    # =======================================
-    # %% 生成因子
-    # 由于读写多，推荐放到内存盘
-    DATA_PATH = r'M:\data3\T1\feature1.parquet'
-    FEATURE_PATH = r'M:\data3\T1\feature.parquet'
+    # 去除停牌后的基础数据
+    INPUT_PATH = r'M:\data3\T1\feature1.parquet'
+    # 添加新特证，有可能因过滤问题，某些股票在票池中反复剔除和纳入
+    OUTPUT_PATH = r'M:\data3\T1\feature2.parquet'
 
-    logger.info('数据准备, {}', DATA_PATH)
-    df = pl.read_parquet(DATA_PATH)
+    logger.info('数据准备, {}', INPUT_PATH)
+    df = pl.read_parquet(INPUT_PATH)
     print(df.columns)
-    # 计算收益率前，提前过滤。收益率计算时不能跳过st等信息
+    # 没有纳入剔除影响的过滤可以提前做
     df = df.filter(
-        pl.col('date') > datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
         # TODO 中证500成份股可能被过滤，这里要注意
         # ~pl.col('asset').str.starts_with('68'),  # 过滤科创板
         # ~pl.col('asset').str.starts_with('30'),  # 过滤创业板
@@ -125,12 +129,13 @@ if __name__ == '__main__':
     # =====================================
     output_file = 'research/output3.py'
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(code_to_string(_code_block_3, sw_l1_columns))
+        f.write(code_to_string(_code_block_3))
 
     logger.info('转码完成')
     # =====================================
+    # 有纳入剔除影响的过滤
     df = df.filter(~pl.col('is_st'))
-    # TODO 只计算中证500等
+    # TODO 只在中证500中计算，由于剔除和纳入的问题，收益计算发生了改变
     # df = df.filter(pl.col('CSI500') > 0)
     # =====================================
     from research.output3 import main
@@ -143,5 +148,5 @@ if __name__ == '__main__':
     logger.info('特征计算完成')
     # =====================================
     # 推荐保存到内存盘中
-    df.write_parquet(FEATURE_PATH)
-    logger.info('特征保存完成, {}', FEATURE_PATH)
+    df.write_parquet(OUTPUT_PATH)
+    logger.info('特征保存完成, {}', OUTPUT_PATH)

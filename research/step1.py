@@ -1,5 +1,6 @@
 import os
 import sys
+
 from pathlib import Path
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -8,7 +9,7 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-
+from datetime import datetime
 from loguru import logger
 
 import polars as pl
@@ -42,7 +43,7 @@ def _code_block_2():
     # 明日停牌
     NEXT_DOJI = ts_delay(DOJI, -1)
 
-    # # 远期收益率,由于平移过含未来数据，只能用于打标签，不能用于训练
+    # # 远期收益率,由于平移过,含未来数据，只能用于打标签，不能用于训练
     # RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
     # RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
     # RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
@@ -54,16 +55,19 @@ def _code_block_2():
 
 # =======================================
 # %% 生成因子
-# 由于读写多，推荐放到内存盘
-DATA_PATH = r'M:\data3\T1\data.parquet'
-FEATURE_PATH = r'M:\data3\T1\feature1.parquet'
+
 
 if __name__ == '__main__':
-    logger.info('数据准备, {}', DATA_PATH)
-    df = pl.read_parquet(DATA_PATH)
+    # 由于读写多，推荐放到内存盘，加快速度
+    INPUT_PATH = r'M:\data3\T1\data.parquet'
+    # 去除停牌后的基础数据
+    OUTPUT_PATH = r'M:\data3\T1\feature1.parquet'
+
+    logger.info('数据准备, {}', INPUT_PATH)
+    df = pl.read_parquet(INPUT_PATH)
     df = df.rename({'time': 'date', 'code': 'asset', 'money': 'amount'})
     print(df.columns)
-    # 计算收益率前，提前过滤。收益率计算时不能跳过st等信息
+
     df = df.with_columns([
         # 添加常数列，回归等场景用得上
         pl.lit(1, dtype=pl.Float32).alias('ONE'),
@@ -88,11 +92,11 @@ if __name__ == '__main__':
     # =====================================
     output_file = 'research/output1.py'
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(code_to_string(_code_block_1, []))
+        f.write(code_to_string(_code_block_1))
 
     output_file = 'research/output2.py'
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(code_to_string(_code_block_2, []))
+        f.write(code_to_string(_code_block_2))
 
     logger.info('转码完成')
     # =====================================
@@ -103,8 +107,10 @@ if __name__ == '__main__':
     # 检查成份股权重是否正确
     # df.group_by('date').agg(pl.sum('zz500'), pl.sum('CSI500')).sort('date').to_pandas()
     # =====================================
-    # 过滤停牌，之后才能算收益与打标签
-    df = df.filter(pl.col('paused') == 0)
+    df = df.filter(
+        pl.col('date') >= datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
+        pl.col('paused') == 0,  # 过滤停牌，之后才能算收益与打标签
+    )
 
     from research.output2 import main
 
@@ -119,5 +125,5 @@ if __name__ == '__main__':
     logger.info('特征计算完成')
 
     # 推荐保存到内存盘中
-    df.write_parquet(FEATURE_PATH)
-    logger.info('特征保存完成, {}', FEATURE_PATH)
+    df.write_parquet(OUTPUT_PATH)
+    logger.info('特征保存完成, {}', OUTPUT_PATH)
