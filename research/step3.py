@@ -3,7 +3,6 @@
 """
 import os
 import sys
-
 from pathlib import Path
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -54,9 +53,14 @@ def func(kv):
     # 合并，特征数据由于过滤了了一些记录，不够用来计算收益，所以需要合并
     df = df1.join(df2, on=['date', 'asset'], how='left')
     tbl = {}
+    df_mean = {}
+    df_std = {}
+    df_last = {}
     imgs = []
     for factor in factors:
         # 明日涨跌停分到-1组
+        df_mean[factor] = df.group_by(f'_fq_{factor}').agg(pl.mean(forward_return)).drop_nulls().to_pandas().set_index(f'_fq_{factor}').iloc[:, 0]
+        df_std[factor] = df.group_by(f'_fq_{factor}').agg(pl.std(forward_return)).drop_nulls().to_pandas().set_index(f'_fq_{factor}').iloc[:, 0]
 
         fig, ic_dict, hist_dict, df_cum_ret = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
                                                                period=period,
@@ -64,17 +68,28 @@ def func(kv):
                                                                figsize=(12, 3),
                                                                axvlines=axvlines)
         s1 = df_cum_ret.iloc[-1]
+        df_last[factor] = s1
+
         s2 = {'monotonic': np.sign(s1.diff()).sum()}
         s3 = pd.Series(s2 | ic_dict | hist_dict)
         tbl[factor] = pd.concat([s1, s3])
         imgs.append(fig_to_img(fig))
 
+    df_last = pd.DataFrame(df_last)
+    df_mean = pd.DataFrame(df_mean)
+    df_std = pd.DataFrame(df_std)
+
     # 各指标柱状图
     tbl = pd.DataFrame(tbl)
-    fig, ax = plt.subplots(1, 1, figsize=(12, 2))
-    ax1 = tbl.iloc[:quantiles].plot.bar(ax=ax)
-    plt.xticks(rotation=0)
-    plt.legend(loc='upper left')
+    fig, axes = plt.subplots(3, 1, figsize=(12, 6), sharex=True)
+    ax = df_last.plot.bar(ax=axes[0])
+    ax.set_title(f'Last Total Return By Quantile')
+    ax = df_mean.plot.bar(ax=axes[1])
+    ax.set_title(f'Mean Return By Quantile')
+    ax = df_std.plot.bar(ax=axes[2])
+    ax.set_title(f'Std Return By Quantile')
+
+    fig.tight_layout()
     imgs.insert(0, fig_to_img(fig))
 
     # 表格
