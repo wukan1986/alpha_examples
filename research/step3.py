@@ -88,7 +88,7 @@ def func(kv):
     ax.set_title(f'Mean Return By Quantile')
     ax = df_std.plot.bar(ax=axes[2])
     ax.set_title(f'Std Return By Quantile')
-
+    plt.xticks(rotation=0)
     fig.tight_layout()
     imgs.insert(0, fig_to_img(fig))
 
@@ -122,6 +122,7 @@ if __name__ == '__main__':
             # 'F_055',
             # 'F_060',
             # 'F_065',
+            # 'F_070',
         ],
     }
     t0 = time.perf_counter()
