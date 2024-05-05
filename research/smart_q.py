@@ -81,7 +81,7 @@ def func_files(name_group) -> pl.DataFrame:
 if __name__ == '__main__':
     files = path_groupby_date(INPUT_PATH)
     # 过滤日期
-    # files = files["2024":]
+    files = files["2024":]
 
     logger.info("start")
     with multiprocessing.Pool(4) as pool:
@@ -89,6 +89,7 @@ if __name__ == '__main__':
         output = list(pool.map(func_files, list(files.groupby(files['key1'].dt.to_period('M')))))
         # polars合并
         output = pl.concat(output)
+        output = output.with_columns(date=pl.col("end_date").dt.truncate("1d"))
         output.write_parquet("smart_q.parquet")
         print(output.tail())
 
