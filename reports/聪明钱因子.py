@@ -1,6 +1,5 @@
 """
-方正金工 聪明钱情绪因子Q
-
+20200209-开源证券-市场微观结构研究系列（3）：聪明钱因子模型的2.0版本
 """
 import multiprocessing
 import pathlib
@@ -58,6 +57,8 @@ def func_file(df: pl.DataFrame) -> pl.DataFrame:
     df = df.with_columns(R=pl.col("close") / pl.col("open") - 1)
     # 多加了1，防止出现除0
     df = df.with_columns(S=pl.col("R").abs() / ((pl.col("volume") + 1) ** BETA))
+    # 另一种方法
+    # df = df.with_columns(S=pl.col("R").abs() / pl.col("volume").log1p())
 
     # 分成时序指标
     return df.group_by("asset").map_groups(func)
@@ -81,7 +82,7 @@ def func_files(name_group) -> pl.DataFrame:
 if __name__ == '__main__':
     files = path_groupby_date(INPUT_PATH)
     # 过滤日期
-    files = files["2024":]
+    files = files["2023":]
 
     logger.info("start")
     with multiprocessing.Pool(4) as pool:
