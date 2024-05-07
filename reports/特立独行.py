@@ -67,8 +67,8 @@ def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
 
 def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.select(
-        pl.col('date').first(),
-        pl.col("asset").first(),
+        pl.col(_DATE_).first(),
+        pl.col(_ASSET_).first(),
         corr=pl.corr("R", "R_index")
     )
     return df
@@ -87,11 +87,11 @@ def get_corr(df: pl.DataFrame) -> pl.DataFrame:
 def func_2files(idx_row):
     idx, row = idx_row
     logger.info(idx)
-    df1 = pl.read_parquet(row['path_x']).rename({"code": "asset", "time": "date", "money": "amount"})
-    df2 = pl.read_parquet(row['path_y']).rename({"code": "asset", "time": "date", "money": "amount"})
-    df1 = get_returns(df1)
-    df2 = get_returns(df2.filter(pl.col("asset") == "000001.XSHG"))
-    dd = df1.join(df2, on="date", suffix='_index')
+    df1 = pl.read_parquet(row['path_x']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
+    df2 = pl.read_parquet(row['path_y']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
+    df1 = get_returns(df1.filter(pl.col("paused") == 0))
+    df2 = get_returns(df2.filter(pl.col(_ASSET_) == "000001.XSHG"))
+    dd = df1.join(df2, on=_DATE_, suffix='_index')
     d1 = get_corr(dd)
     return d1
 
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         output = list(pool.map(func_2files, list(ff.iterrows())))
         # polars合并
         output = pl.concat(output)
-        output = output.with_columns(pl.col("date").dt.truncate("1d"))
+        output = output.with_columns(pl.col(_DATE_).dt.truncate("1d"))
         output.write_parquet("特立独行.parquet")
         print(output.tail())
 

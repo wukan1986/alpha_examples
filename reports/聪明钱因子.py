@@ -7,6 +7,7 @@ import pathlib
 import pandas as pd
 import polars as pl
 from loguru import logger
+from polars_ta.wq import abs_
 
 INPUT_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 # 每月取最近10个交易日
@@ -31,37 +32,47 @@ def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
     return df
 
 
+_ = (r"open", r"close", r"volume", r"volume_1")
+(open, close, volume, volume_1) = (pl.col(i) for i in _)
+
+_ = (r"R",)
+(R,) = (pl.col(i) for i in _)
+
+_DATE_ = "date"
+_ASSET_ = "asset"
+
+
 def func(df: pl.DataFrame) -> pl.DataFrame:
     # 与时序指标不同，这里排序用的不是时序
     df = df.sort(by="S", descending=True)
-    df = df.with_columns(acc_volume_pct=pl.col("volume").cum_sum() / pl.col("volume").sum())
+    df = df.with_columns(acc_volume_pct=volume.cum_sum() / volume.sum())
     # 另分一个字段，用于处理小于阈值
-    df = df.with_columns(volume_1=pl.when(pl.col("acc_volume_pct") <= THRESHOLD).then(pl.col("volume")).otherwise(0))
+    df = df.with_columns(volume_1=pl.when(pl.col("acc_volume_pct") <= THRESHOLD).then(volume).otherwise(0))
     df = df.with_columns(
-        vwap_smart=(pl.col("close") * pl.col("volume_1")).sum() / pl.col("volume_1").sum(),
-        vwap_all=(pl.col("close") * pl.col("volume")).sum() / pl.col("volume").sum(),
+        vwap_smart=(close * volume_1).sum() / volume_1.sum(),
+        vwap_all=(close * volume).sum() / volume.sum(),
     )
     df = df.with_columns(Q=pl.col("vwap_smart") / pl.col("vwap_all"))
     # 取值
-    return df.select(pl.col("date").min().alias("start_date"),
-                     pl.col("date").max().alias("end_date"),
-                     pl.col('asset').first(), pl.col('Q').first())
+    return df.select(pl.col(_DATE_).min().alias("start_date"),
+                     pl.col(_DATE_).max().alias("end_date"),
+                     pl.col(_ASSET_).first(), pl.col('Q').first())
 
 
 def func_file(df: pl.DataFrame) -> pl.DataFrame:
     """处理一个月的数据"""
-    df = df.rename({"code": "asset", "time": "date", "money": "amount"})
+    df = df.rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
     df = df.filter(pl.col("paused") == 0)
 
     # 涨跌幅
-    df = df.with_columns(R=pl.col("close") / pl.col("open") - 1)
+    df = df.with_columns(R=close / open - 1)
     # 多加了1，防止出现除0
-    df = df.with_columns(S=pl.col("R").abs() / ((pl.col("volume") + 1) ** BETA))
+    df = df.with_columns(S=abs_(R) / ((volume + 1) ** BETA))
     # 另一种方法
-    # df = df.with_columns(S=pl.col("R").abs() / pl.col("volume").log1p())
+    # df = df.with_columns(S=abs_(R) / volume.log1p())
 
     # 分成时序指标
-    return df.group_by("asset").map_groups(func)
+    return df.group_by(_ASSET_).map_groups(func)
 
 
 def func_files(name_group) -> pl.DataFrame:
@@ -80,18 +91,18 @@ def func_files(name_group) -> pl.DataFrame:
 
 
 if __name__ == '__main__':
-    files = path_groupby_date(INPUT_PATH)
+    f1 = path_groupby_date(INPUT_PATH)
     # 过滤日期
-    files = files["2023":]
+    f1 = f1["2023":]
 
     logger.info("start")
     with multiprocessing.Pool(4) as pool:
         # pandas按月分组
-        output = list(pool.map(func_files, list(files.groupby(files['key1'].dt.to_period('M')))))
+        output = list(pool.map(func_files, list(f1.groupby(f1['key1'].dt.to_period('M')))))
         # polars合并
         output = pl.concat(output)
         output = output.with_columns(date=pl.col("end_date").dt.truncate("1d"))
-        output.write_parquet("smart_q.parquet")
+        output.write_parquet("聪明钱因子.parquet")
         print(output.tail())
 
     logger.info("done")

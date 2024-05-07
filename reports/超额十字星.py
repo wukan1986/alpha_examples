@@ -12,6 +12,7 @@ import pathlib
 import pandas as pd
 import polars as pl
 from loguru import logger
+from polars_ta.candles import real_body, upper_shadow, lower_shadow
 
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 INPUT2_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_index_minute")
@@ -31,8 +32,8 @@ def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
     return df
 
 
-_ = (r"close",)
-(close,) = (pl.col(i) for i in _)
+_ = (r"open", r"high", r"low", r"close", r"volume", r"excess")
+(open, high, low, close, volume, excess) = (pl.col(i) for i in _)
 
 _ = (r"R",)
 (R,) = (pl.col(i) for i in _)
@@ -46,24 +47,24 @@ def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     # ========================================
     df = df.with_columns(
         # TODO 偷懒了，没有用昨收价，因为还要复权
-        R=pl.col("close") / pl.col("open").first() - 1,
+        R=close / open.first() - 1,
     )
     return df
 
 
 def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.select(
-        pl.col('date'),
-        pl.col("asset"),
-        excess=pl.col("R") - pl.col("R_index")
+        pl.col(_DATE_),
+        pl.col(_ASSET_),
+        excess=R - pl.col("R_index")
     )
     df = df.select(
-        pl.col('date').first(),
-        pl.col("asset").first(),
-        open=pl.col("excess").first(),
-        high=pl.col("excess").max(),
-        low=pl.col("excess").min(),
-        close=pl.col("excess").last(),
+        pl.col(_DATE_).first(),
+        pl.col(_ASSET_).first(),
+        open=excess.first(),
+        high=excess.max(),
+        low=excess.min(),
+        close=excess.last(),
     )
     return df
 
@@ -80,9 +81,9 @@ def get_excess(df: pl.DataFrame) -> pl.DataFrame:
 
 def get_doji(df: pl.DataFrame) -> pl.DataFrame:
     df = df.with_columns(
-        real_body=(pl.col("close") - pl.col("open")).abs(),
-        up_shadow=pl.col("high") - pl.max_horizontal(pl.col("open"), pl.col("close")),
-        down_shadow=pl.min_horizontal(pl.col("open"), pl.col("close")) - pl.col("low"),
+        real_body=real_body(open, high, low, close),
+        upper_shadow=upper_shadow(open, high, low, close),
+        lower_shadow=lower_shadow(open, high, low, close),
     )
     return df
 
@@ -90,11 +91,11 @@ def get_doji(df: pl.DataFrame) -> pl.DataFrame:
 def func_2files(idx_row):
     idx, row = idx_row
     logger.info(idx)
-    df1 = pl.read_parquet(row['path_x']).rename({"code": "asset", "time": "date", "money": "amount"})
-    df2 = pl.read_parquet(row['path_y']).rename({"code": "asset", "time": "date", "money": "amount"})
-    df1 = get_returns(df1)
-    df2 = get_returns(df2.filter(pl.col("asset") == "000001.XSHG"))
-    dd = df1.join(df2, on="date", suffix='_index')
+    df1 = pl.read_parquet(row['path_x']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
+    df2 = pl.read_parquet(row['path_y']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
+    df1 = get_returns(df1.filter(pl.col("paused") == 0))
+    df2 = get_returns(df2.filter(pl.col(_ASSET_) == "000001.XSHG"))
+    dd = df1.join(df2, on=_DATE_, suffix='_index')
     d1 = get_excess(dd)
     return d1
 
@@ -113,7 +114,7 @@ if __name__ == '__main__':
         output = list(pool.map(func_2files, list(ff.iterrows())))
         # polars合并
         output = pl.concat(output)
-        output = output.with_columns(pl.col("date").dt.truncate("1d"))
+        output = output.with_columns(pl.col(_DATE_).dt.truncate("1d"))
         output = get_doji(output)
         output.write_parquet("超额十字星.parquet")
         print(output.tail())
