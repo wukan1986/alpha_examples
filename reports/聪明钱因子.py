@@ -12,8 +12,8 @@ from polars_ta.wq import abs_
 INPUT_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 # 每月取最近10个交易日
 DAYS = 10
-# 成交量**0.5
-BETA = 0.5
+BETAS = [-0.5, -0.25, -0.1, -0.05, 0, 0.05, 0.1, 0.25, 0.33, 0.5, 0.7]
+BETAS_LOG = BETAS + ['log']
 # 阈值
 THRESHOLD = 0.2
 
@@ -44,32 +44,40 @@ _ASSET_ = "asset"
 
 def func(df: pl.DataFrame) -> pl.DataFrame:
     # 与时序指标不同，这里排序用的不是时序
-    df = df.sort(by="S", descending=True)
-    df = df.with_columns(acc_volume_pct=volume.cum_sum() / volume.sum())
-    # 另分一个字段，用于处理小于阈值
-    df = df.with_columns(volume_1=pl.when(pl.col("acc_volume_pct") <= THRESHOLD).then(volume).otherwise(0))
-    df = df.with_columns(
-        vwap_smart=(close * volume_1).sum() / volume_1.sum(),
-        vwap_all=(close * volume).sum() / volume.sum(),
-    )
-    df = df.with_columns(Q=pl.col("vwap_smart") / pl.col("vwap_all"))
+    for beta in BETAS_LOG:
+        df = df.sort(by=f"S_{beta}", descending=True)
+        df = df.with_columns(acc_volume_pct=volume.cum_sum() / volume.sum())
+
+        # 另分一个字段，用于处理小于阈值
+        df = df.with_columns(volume_1=pl.when(pl.col("acc_volume_pct") <= THRESHOLD).then(volume).otherwise(0))
+        df = df.with_columns(
+            vwap_smart=(close * volume_1).sum() / volume_1.sum(),
+            vwap_all=(close * volume).sum() / volume.sum(),
+        )
+        df = df.with_columns(
+            (pl.col("vwap_smart") / pl.col("vwap_all")).alias(f"Q_{beta}")
+        )
     # 取值
     return df.select(pl.col(_DATE_).min().alias("start_date"),
                      pl.col(_DATE_).max().alias("end_date"),
-                     pl.col(_ASSET_).first(), pl.col('Q').first())
+                     pl.col(_ASSET_).first(),
+                     pl.col([f"Q_{beta}" for beta in BETAS_LOG]).first())
 
 
 def func_file(df: pl.DataFrame) -> pl.DataFrame:
     """处理一个月的数据"""
+
     df = df.rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
     df = df.filter(pl.col("paused") == 0)
 
     # 涨跌幅
     df = df.with_columns(R=close / open - 1)
     # 多加了1，防止出现除0
-    df = df.with_columns(S=abs_(R) / ((volume + 1) ** BETA))
+    df = df.with_columns(
+        [(abs_(R) / (volume + 1) ** beta).alias(f"S_{beta}") for beta in BETAS]
+    )
     # 另一种方法
-    # df = df.with_columns(S=abs_(R) / volume.log1p())
+    df = df.with_columns((abs_(R) / volume.log1p()).alias("S_log"))
 
     # 分成时序指标
     return df.group_by(_ASSET_).map_groups(func)
