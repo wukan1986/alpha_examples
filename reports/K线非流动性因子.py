@@ -54,7 +54,7 @@ def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def get_illiq(df: pl.DataFrame) -> pl.DataFrame:
+def get_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.group_by(_ASSET_).map_groups(func_0_ts__asset)
     return df
 
@@ -63,7 +63,8 @@ def func_file(idx_row):
     idx, row = idx_row
     logger.info(idx)
     df1 = pl.read_parquet(row['path']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
-    df1 = get_illiq(df1.filter(pl.col("paused") == 0))
+    df1 = df1.filter(pl.col("paused") == 0)
+    df1 = get_0_ts__asset(df1)
     return df1
 
 
@@ -76,7 +77,7 @@ def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def get_ts_mean(df: pl.DataFrame) -> pl.DataFrame:
+def get_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.group_by(_ASSET_).map_groups(func_1_ts__asset)
     return df
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
         # polars合并
         output = pl.concat(output)
         output = output.with_columns(pl.col(_DATE_).dt.truncate("1d"))
-        output = get_ts_mean(output)
+        output = get_1_ts__asset(output)
         output.write_parquet("K线非流动性因子.parquet")
         print(output.tail())
 

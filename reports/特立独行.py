@@ -65,6 +65,11 @@ def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
+def get_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
+    df = df.group_by(_ASSET_).map_groups(func_0_ts__asset)
+    return df
+
+
 def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.select(
         pl.col(_DATE_).first(),
@@ -74,12 +79,7 @@ def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def get_returns(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.group_by(_ASSET_).map_groups(func_0_ts__asset)
-    return df
-
-
-def get_corr(df: pl.DataFrame) -> pl.DataFrame:
+def get_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.group_by(_ASSET_).map_groups(func_1_ts__asset)
     return df
 
@@ -89,10 +89,10 @@ def func_2files(idx_row):
     logger.info(idx)
     df1 = pl.read_parquet(row['path_x']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
     df2 = pl.read_parquet(row['path_y']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
-    df1 = get_returns(df1.filter(pl.col("paused") == 0))
-    df2 = get_returns(df2.filter(pl.col(_ASSET_) == "000001.XSHG"))
+    df1 = get_0_ts__asset(df1.filter(pl.col("paused") == 0))
+    df2 = get_0_ts__asset(df2.filter(pl.col(_ASSET_) == "000001.XSHG"))
     dd = df1.join(df2, on=_DATE_, suffix='_index')
-    d1 = get_corr(dd)
+    d1 = get_1_ts__asset(dd)
     return d1
 
 
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     f2 = path_groupby_date(INPUT2_PATH)
     ff = pd.merge(f1, f2, left_index=True, right_index=True, how='left')
     # 过滤日期
-    ff = ff["2023-01":]
+    ff = ff["2024-01":]
 
     logger.info("start")
 

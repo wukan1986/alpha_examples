@@ -4,14 +4,14 @@
 除了APM因子，此代码还实现了W切割
 """
 import datetime
-import math
 import multiprocessing
 import pathlib
 
 import pandas as pd
 import polars as pl
+from expr_codegen.tool import codegen_exec
 from loguru import logger
-from polars_ta.wq import ts_regression_resid, ts_ir, ts_sum
+from polars_ta.wq import ts_regression_resid, ts_ir, ts_sum, ts_delay
 
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 INPUT2_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_index_minute")
@@ -40,102 +40,60 @@ def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
     return df
 
 
-_ = (r"open", r"close",)
-(open, close,) = (pl.col(i) for i in _)
-
-_ = (r"R", r"R_i", r"resid", r"resid_pm", r"rsum")
-(R, R_i, resid, resid_pm, rsum) = (pl.col(i) for i in _)
-
 _DATE_ = "date"
 _ASSET_ = "asset"
 
 
-def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.sort(by=[_DATE_])
-    # ========================================
-    df = df.with_columns(
-        # 每一节开始时的价格前移，可用于日内的收益计算
-        OPEN_shift=pl.col('OPEN').shift(),
-        OPEN_i_shift=pl.col('OPEN_i').shift(),
-        # 昨天的收盘价移动
-        CLOSE_shift=pl.col('CLOSE').shift(),
-        CLOSE_i_shift=pl.col('CLOSE_i').shift(),
-    )
-    df = df.with_columns(
-        # 日内收益率
-        RT=pl.col('CLOSE') / pl.col('OPEN_shift') - 1,
-        RT_i=pl.col('CLOSE_i') / pl.col('OPEN_i_shift') / - 1,
-        # 隔夜收益率
-        RY=pl.col('OPEN') / pl.col('CLOSE_shift') - 1,
-        RY_i=pl.col('OPEN_i') / pl.col('CLOSE_i_shift') / - 1,
-    )
-    return df
+def _code_block_1():
+    # 每一节开始时的价格前移，可用于日内的收益计算
+    OPEN_shift = ts_delay(OPEN, 1)
+    OPEN_i_shift = ts_delay(OPEN_i, 1)
+    # 昨天的收盘价移动
+    CLOSE_shift = ts_delay(CLOSE, 1)
+    CLOSE_i_shift = ts_delay(CLOSE_i, 1)
+
+    # 日内收益率
+    RT = CLOSE / OPEN_shift - 1
+    RT_i = CLOSE_i / OPEN_i_shift - 1
+    # 隔夜收益率
+    RY = OPEN / CLOSE_shift - 1
+    RY_i = OPEN_i / CLOSE_i_shift - 1
 
 
-def get_returns(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.group_by(_ASSET_).map_groups(func_0_ts__asset)
-    return df
+def _code_block_2():
+    # 用于APM因子
+    resid = ts_regression_resid(R, R_i, 20)
+    # 用于W切割
+    rsum = ts_sum(R, 20)
 
 
-def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.sort(by=[_DATE_])
-    # ========================================
-    df = df.with_columns(
-        # 用于APM因子
-        resid=ts_regression_resid(R, R_i, 20),
-        # 用于W切割
-        rsum=ts_sum(R, 20),
-    )
-    return df
+def _code_block_3():
+    stat = ts_ir(resid - resid_pm, 20) / (20 ** 0.5)
 
 
-def get_resid(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.group_by(_ASSET_).map_groups(func_1_ts__asset)
-    return df.select(_DATE_, _ASSET_, 'date_', resid, rsum)
-
-
-def func_2_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.sort(by=[_DATE_])
-    # ========================================
-    df = df.with_columns(
-        stat=ts_ir(resid - resid_pm, 20) / math.sqrt(20)
-    )
-    return df
-
-
-def get_stat(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.group_by(_ASSET_).map_groups(func_2_ts__asset)
-    return df
-
-
-def func_files(name_group, col) -> pl.DataFrame:
+def func_files(name_group) -> pl.DataFrame:
     """每月多个文件成一组"""
     name, group = name_group
     logger.info(name)
 
-    # 股票
-    dfs = []
-    for path in group[col]:
-        df = pl.read_parquet(path).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
-        df = df.filter(pl.col(_DATE_).dt.time().is_in(TIMES))
-        dfs.append(df)
-    dfs = pl.concat(dfs)
+    df = pl.read_parquet(group['path'].to_list()).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
+    df = df.filter(pl.col(_DATE_).dt.time().is_in(TIMES))
 
-    return dfs
+    return df
 
 
 def multi_task(f1, f2, f3):
     # 指数
     with multiprocessing.Pool(4) as pool:
         # pandas按月分组
-        output = list(map(lambda x: func_files(x, "path"), list(f2.groupby(f1['key1'].dt.to_period('M')))))
+        output = list(pool.map(func_files, list(f2.groupby(f1['key1'].dt.to_period('M')))))
         output = pl.concat(output)
         output.write_parquet("APM因子_index.parquet")
 
     # 股票
     with multiprocessing.Pool(4) as pool:
         # pandas按月分组
-        output = list(map(lambda x: func_files(x, "path"), list(f1.groupby(f1['key1'].dt.to_period('M')))))
+        output = list(pool.map(func_files, list(f1.groupby(f1['key1'].dt.to_period('M')))))
         output = pl.concat(output)
         output = output.with_columns(pl.col(_DATE_).dt.truncate("1d").alias('date_'))
 
@@ -161,7 +119,7 @@ if __name__ == '__main__':
     logger.info("start")
 
     # 多进程
-    multi_task(f1, f2, f3)
+    # multi_task(f1, f2, f3)
 
     # 加载数据
     df1 = pl.read_parquet("APM因子_stock.parquet").filter(pl.col("paused") == 0)
@@ -176,38 +134,40 @@ if __name__ == '__main__':
     del df1
     del df2
     logger.info("计算收益率")
-    df3 = get_returns(df3)
+    df3 = codegen_exec(globals().copy(), _code_block_1, df3)
+
     # 挑选指定时间点的数据
-    df_RO = df3.filter(pl.col(_DATE_).dt.time() == AM_T1).select(_DATE_, _ASSET_, 'date_', R=pl.col("RY"), R_i="RY_i")
-    df_RA = df3.filter(pl.col(_DATE_).dt.time() == AM_T2).select(_DATE_, _ASSET_, 'date_', R=pl.col("RT"), R_i="RT_i")
-    df_RP = df3.filter(pl.col(_DATE_).dt.time() == PM_T2).select(_DATE_, _ASSET_, 'date_', R=pl.col("RT"), R_i="RT_i")
+    df_RO = df3.filter(pl.col(_DATE_).dt.time() == AM_T1).select(pl.col(_DATE_).dt.truncate("1d"), _ASSET_, R=pl.col("RY"), R_i="RY_i")
+    df_RA = df3.filter(pl.col(_DATE_).dt.time() == AM_T2).select(pl.col(_DATE_).dt.truncate("1d"), _ASSET_, R=pl.col("RT"), R_i="RT_i")
+    df_RP = df3.filter(pl.col(_DATE_).dt.time() == PM_T2).select(pl.col(_DATE_).dt.truncate("1d"), _ASSET_, R=pl.col("RT"), R_i="RT_i")
     del df3
 
     logger.info("计算残差")
     # 这个用时久
-    df_EO = get_resid(df_RO)
-    df_EA = get_resid(df_RA)
-    df_EP = get_resid(df_RP)
+    df_EO = codegen_exec(globals().copy(), _code_block_2, df_RO)
+    df_EA = codegen_exec(globals().copy(), _code_block_2, df_RA)
+    df_EP = codegen_exec(globals().copy(), _code_block_2, df_RP)
+
     del df_RO
     del df_RA
     del df_RP
 
     logger.info("计算stat")
-    df_APM_raw = df_EA.join(df_EP, on=['date_', _ASSET_], suffix='_pm')
-    df_APM_new = df_EO.join(df_EP, on=['date_', _ASSET_], suffix='_pm')
+    df_APM_raw = df_EA.join(df_EP, on=[_DATE_, _ASSET_], suffix='_pm')
+    df_APM_new = df_EO.join(df_EP, on=[_DATE_, _ASSET_], suffix='_pm')
     del df_EO
     del df_EA
     del df_EP
     # 计算统计量stat
     # TODO 还需要再与ret20回归一下
-    df_APM_raw = get_stat(df_APM_raw).rename({'stat': 'APM_raw'})
-    df_APM_new = get_stat(df_APM_new).rename({'stat': 'APM_new'})
+    df_APM_raw = codegen_exec(globals().copy(), _code_block_3, df_APM_raw).rename({'stat': 'APM_raw'})
+    df_APM_new = codegen_exec(globals().copy(), _code_block_3, df_APM_new).rename({'stat': 'APM_new'})
 
     logger.info("W式切割")
     df_APM_raw = df_APM_raw.with_columns(AVP=pl.col("rsum") - pl.col("rsum_pm"))
     df_APM_new = df_APM_new.with_columns(OVP=pl.col("rsum") - pl.col("rsum_pm"))
 
-    output = df_APM_raw.join(df_APM_new, on=['date_', _ASSET_]).select(_DATE_, _ASSET_, 'date_', 'APM_raw', 'APM_new', 'AVP', 'OVP')
+    output = df_APM_raw.join(df_APM_new, on=[_DATE_, _ASSET_]).select(_DATE_, _ASSET_, 'APM_raw', 'APM_new', 'AVP', 'OVP')
     output.write_parquet("APM因子.parquet")
     print(output.tail())
 

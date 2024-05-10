@@ -67,9 +67,6 @@ def func(df: pl.DataFrame) -> pl.DataFrame:
 def func_file(df: pl.DataFrame) -> pl.DataFrame:
     """处理一个月的数据"""
 
-    df = df.rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
-    df = df.filter(pl.col("paused") == 0)
-
     # 涨跌幅
     df = df.with_columns(R=close / open - 1)
     # 多加了1，防止出现除0
@@ -88,20 +85,17 @@ def func_files(name_group) -> pl.DataFrame:
     name, group = name_group
     logger.info(name)
 
-    dfs = []
-    # 取后10个交易日
     group = group.tail(DAYS)
-    for path in group['path']:
-        dfs.append(pl.read_parquet(path))
+    df = pl.read_parquet(group['path'].to_list()).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
+    df = df.filter(pl.col("paused") == 0)
 
-    dfs = pl.concat(dfs)
-    return func_file(dfs)
+    return func_file(df)
 
 
 if __name__ == '__main__':
     f1 = path_groupby_date(INPUT_PATH)
     # 过滤日期
-    f1 = f1["2023":]
+    f1 = f1["2024":]
 
     logger.info("start")
     with multiprocessing.Pool(4) as pool:
