@@ -1,6 +1,5 @@
 import os
 import sys
-
 from pathlib import Path
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -14,10 +13,10 @@ from loguru import logger
 
 import polars as pl
 import polars.selectors as cs
+from expr_codegen.tool import codegen_exec
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
-from research.step2 import code_to_string
 
 
 def _code_block_1():
@@ -88,21 +87,9 @@ if __name__ == '__main__':
     ]).fill_nan(None)  # nan填充成null
 
     logger.info('数据准备完成')
-
     # =====================================
-    output_file = 'research/output1.py'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(code_to_string(_code_block_1))
 
-    output_file = 'research/output2.py'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(code_to_string(_code_block_2))
-
-    logger.info('转码完成')
-    # =====================================
-    from research.output1 import main
-
-    df = main(df)
+    df = codegen_exec(_code_block_1, df)
 
     # 检查成份股权重是否正确
     # df.group_by('date').agg(pl.sum('zz500'), pl.sum('CSI500')).sort('date').to_pandas()
@@ -112,9 +99,7 @@ if __name__ == '__main__':
         pl.col('paused') == 0,  # 过滤停牌，之后才能算收益与打标签
     )
 
-    from research.output2 import main
-
-    df = main(df)
+    df = codegen_exec(_code_block_2, df)
 
     # 计算出来的结果需要进行部分修复，防止之后计算时出错
     df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))

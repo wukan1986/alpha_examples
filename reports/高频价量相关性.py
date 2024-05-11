@@ -102,7 +102,7 @@ if __name__ == '__main__':
     df = pl.read_parquet("高频价量相关性_temp.parquet")
     # 数据中有nan,后面计算会出错，修正一下
     df = df.fill_nan(None)
-    df = codegen_exec(globals().copy(), _code_block_1, df,
+    df = codegen_exec(_code_block_1, df,
                       extra_codes="from polars_ta.prefix.talib import ts_LINEARREG_SLOPE")
 
     # 这里要做一次市值中性化

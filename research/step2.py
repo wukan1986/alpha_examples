@@ -13,10 +13,8 @@ sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
 import re
-import inspect
 
-from expr_codegen.codes import sources_to_exprs
-from expr_codegen.tool import ExprTool
+from expr_codegen.tool import codegen_exec
 from loguru import logger
 
 # 导入OPEN等特征
@@ -44,14 +42,14 @@ def _code_block_3():
     # # 为何2次方看起来与3次方效果一样？
     # LOG_MC_NL = cs_mad_zscore(cs_resid(LOG_MC ** 2, LOG_MC, ONE))
 
-    # 风控指标，不参与机器学习，但参与最后的下单过滤
-    R_01 = CLOSE / ts_mean(CLOSE, 5) - 1
-    R_02 = ts_mean(CLOSE, 5) / ts_mean(CLOSE, 10) - 1
-    R_03 = close / 3 - 1
+    # TODO 风控指标，不参与因子计算前的过滤，不参与机器学习，但参与最后的下单过滤
+    R_01 = CLOSE / ts_mean(CLOSE, 5)  # 市价在5日均线上方
+    R_02 = ts_mean(CLOSE, 5) / ts_mean(CLOSE, 20)  # 5日均线在20日均线上方
+    R_03 = close  # 低于3元的股价不考虑
+    R_04 = market_cap  # 市值20亿下算微盘股
 
     # 原表达式
-    # _1 = ts_mean(high / low, 10)
-    _1 = ts_mean(amount, 20) * -1
+    _1 = HIGH / LOW - 1
 
     # 去极值、标准化、中性化
     F_11 = cs_mad_zscore(_1)
@@ -70,36 +68,18 @@ def _code_block_3():
     # F_010 = cs_rank2(F_00, 0.10) * -1
     # F_015 = cs_rank2(F_00, 0.15) * -1
     # F_020 = cs_rank2(F_00, 0.20) * -1
-    F_025 = cs_rank2(F_00, 0.25) * -1
-    F_030 = cs_rank2(F_00, 0.30) * -1
-    F_035 = cs_rank2(F_00, 0.35) * -1
+    # F_025 = cs_rank2(F_00, 0.25) * -1
+    # F_030 = cs_rank2(F_00, 0.30) * -1
+    # F_035 = cs_rank2(F_00, 0.35) * -1
     # F_040 = cs_rank2(F_00, 0.40) * -1
     # F_045 = cs_rank2(F_00, 0.45) * -1
-    # F_050 = cs_rank2(F_00, 0.50) * -1
-    # F_055 = cs_rank2(F_00, 0.55) * -1
-    # F_060 = cs_rank2(F_00, 0.60) * -1
-    # F_065 = cs_rank2(F_00, 0.65) * -1
+    F_050 = cs_rank2(F_00, 0.50) * -1
+    F_055 = cs_rank2(F_00, 0.55) * -1
+    F_060 = cs_rank2(F_00, 0.60) * -1
+    F_065 = cs_rank2(F_00, 0.65) * -1
+    F_070 = cs_rank2(F_00, 0.70) * -1
     #
-
-
-def code_to_string(code_block):
-    source = inspect.getsource(code_block)
-    raw, exprs_dict = sources_to_exprs(globals().copy(), source, safe=False)
-
-    # 生成代码
-    codes, G = ExprTool().all(exprs_dict, style='polars', template_file='template.py.j2',
-                              replace=True, regroup=True, format=True,
-                              date='date', asset='asset',
-                              # 复制了需要使用的函数，还复制了最原始的表达式
-                              extra_codes=(raw,
-                                           # 传入多个列的方法
-                                           r'CS_SW_L1 = pl.col(r"^sw_l1_\d+$")',
-                                           # rf'CS_SW_L1 = [pl.col(i) for i in {sw_l1_columns}]',
-                                           ))
-    # 传入多个列的方法
-    # codes = codes.replace(', CS_SW_L1', ', *CS_SW_L1')
-
-    return codes
+    # F_065 = cs_rank2(cs_mad_zscore(_1), 0.65) * -1
 
 
 if __name__ == '__main__':
@@ -127,20 +107,14 @@ if __name__ == '__main__':
     logger.info('数据准备完成')
 
     # =====================================
-    output_file = 'research/output3.py'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(code_to_string(_code_block_3))
-
-    logger.info('转码完成')
-    # =====================================
     # 有纳入剔除影响的过滤
     df = df.filter(~pl.col('is_st'))
+    # 市值大于20亿才考虑，本来应当是20e8，但这里单亿是亿
+    # df = df.filter(pl.col('market_cap') > 20)
     # TODO 只在中证500中计算，由于剔除和纳入的问题，收益计算发生了改变
     # df = df.filter(pl.col('CSI500') > 0)
     # =====================================
-    from research.output3 import main
-
-    df = main(df)
+    df = codegen_exec(_code_block_3, df)
 
     # 将计算结果中的inf都换成null
     df = df.with_columns(fill_nan(purify(cs.numeric())))
