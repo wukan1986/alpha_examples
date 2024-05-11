@@ -8,8 +8,7 @@ import pandas as pd
 import polars as pl
 from expr_codegen.tool import codegen_exec
 from loguru import logger
-from polars_ta.prefix.talib import ts_LINEARREG_SLOPE
-from polars_ta.wq import ts_mean, ts_std_dev, cs_zscore
+from polars_ta.wq import ts_mean, ts_std_dev, cs_zscore  # noqa
 
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 
@@ -76,6 +75,9 @@ def multi_task(f1):
 
 
 def _code_block_1():
+    # talib在模板中没有默认导入，这种写法可直接复制指定位置
+    from polars_ta.prefix.talib import ts_LINEARREG_SLOPE
+
     _avg = ts_mean(corr, 20)
     _std = ts_std_dev(corr, 20)
     _beta = ts_LINEARREG_SLOPE(corr, 20)
@@ -102,8 +104,7 @@ if __name__ == '__main__':
     df = pl.read_parquet("高频价量相关性_temp.parquet")
     # 数据中有nan,后面计算会出错，修正一下
     df = df.fill_nan(None)
-    df = codegen_exec(_code_block_1, df,
-                      extra_codes="from polars_ta.prefix.talib import ts_LINEARREG_SLOPE")
+    df = codegen_exec(_code_block_1, df)
 
     # 这里要做一次市值中性化
     print(df.tail())
