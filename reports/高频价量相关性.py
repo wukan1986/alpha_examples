@@ -76,14 +76,17 @@ def multi_task(f1):
 
 
 def _code_block_1():
-    avg = ts_mean(corr, 20)
-    std = ts_std_dev(corr, 20)
-    beta = ts_LINEARREG_SLOPE(corr, 20)
+    _avg = ts_mean(corr, 20)
+    _std = ts_std_dev(corr, 20)
+    _beta = ts_LINEARREG_SLOPE(corr, 20)
 
-    # TODO 各种中性化都没有做
+    # TODO 各种中性化
+    # _avg = cs_mad_zscore_resid(_avg, LOG_MC_ZS, ONE)
+    # _std = cs_mad_zscore_resid(_std, LOG_MC_ZS, ONE)
+    # _beta = cs_mad_zscore_resid(_beta, LOG_MC_ZS, ONE)
 
-    pv_corr = cs_zscore(avg) + cs_zscore(std)
-    CPV = cs_zscore(pv_corr) + cs_zscore(beta)
+    pv_corr = cs_zscore(_avg) + cs_zscore(_std)
+    CPV = cs_zscore(pv_corr) + cs_zscore(_beta)
 
 
 if __name__ == '__main__':
@@ -94,9 +97,10 @@ if __name__ == '__main__':
 
     logger.info("start")
     # 初步计算
-    # multi_task(f1)
+    multi_task(f1)
     logger.info("计算")
     df = pl.read_parquet("高频价量相关性_temp.parquet")
+    # 数据中有nan,后面计算会出错，修正一下
     df = df.fill_nan(None)
     df = codegen_exec(globals().copy(), _code_block_1, df,
                       extra_codes="from polars_ta.prefix.talib import ts_LINEARREG_SLOPE")
