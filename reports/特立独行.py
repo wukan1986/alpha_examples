@@ -25,49 +25,25 @@ import pathlib
 
 import pandas as pd
 import polars as pl
+from expr_codegen.tool import codegen_exec
 from loguru import logger
 from polars_ta.wq import ts_returns
+
+from reports.utils import path_groupby_date
 
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 INPUT2_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_index_minute")
 
-
-def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
-    """将文件名中的时间提取出来"""
-    files = list(input_path.glob(f'*'))
-
-    # 提取文件名中的时间
-    df = pd.DataFrame([f.name.split('.')[0].split("__") for f in files], columns=['start', 'end'])
-    df['path'] = files
-    df['key1'] = pd.to_datetime(df['start'])
-    df['key2'] = df['key1']
-    df.index = df['key1'].copy()
-    df.index.name = 'date'  # 防止无法groupby
-    return df
-
-
 _ = (r"close",)
 (close,) = (pl.col(i) for i in _)
-
-_ = (r"R",)
-(R,) = (pl.col(i) for i in _)
 
 _DATE_ = "date"
 _ASSET_ = "asset"
 
 
-def func_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.sort(by=[_DATE_])
-    # ========================================
-    df = df.with_columns(
-        R=ts_returns(close, 1),
-    )
-    return df
-
-
-def get_0_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.group_by(_ASSET_).map_groups(func_0_ts__asset)
-    return df
+def _code_block_1():
+    # 每一节开始时的价格前移，可用于日内的收益计算
+    R = ts_returns(close, 1)
 
 
 def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
@@ -89,8 +65,10 @@ def func_2files(idx_row):
     logger.info(idx)
     df1 = pl.read_parquet(row['path_x']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
     df2 = pl.read_parquet(row['path_y']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
-    df1 = get_0_ts__asset(df1.filter(pl.col("paused") == 0))
-    df2 = get_0_ts__asset(df2.filter(pl.col(_ASSET_) == "000001.XSHG"))
+
+    df1 = codegen_exec(_code_block_1, df1.filter(pl.col("paused") == 0))
+    df2 = codegen_exec(_code_block_1, df2.filter(pl.col(_ASSET_) == "000001.XSHG"))
+
     dd = df1.join(df2, on=_DATE_, suffix='_index')
     d1 = get_1_ts__asset(dd)
     return d1

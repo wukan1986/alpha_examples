@@ -4,28 +4,14 @@
 import multiprocessing
 import pathlib
 
-import pandas as pd
 import polars as pl
 from expr_codegen.tool import codegen_exec
 from loguru import logger
 from polars_ta.wq import ts_mean, ts_std_dev, cs_zscore  # noqa
 
+from reports.utils import path_groupby_date
+
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
-
-
-def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
-    """将文件名中的时间提取出来"""
-    files = list(input_path.glob(f'*'))
-
-    # 提取文件名中的时间
-    df = pd.DataFrame([f.name.split('.')[0].split("__") for f in files], columns=['start', 'end'])
-    df['path'] = files
-    df['key1'] = pd.to_datetime(df['start'])
-    df['key2'] = df['key1']
-    df.index = df['key1'].copy()
-    df.index.name = 'date'  # 防止无法groupby
-    return df
-
 
 _ = (r"open", r"close", r"volume", r"corr")
 (open, close, volume, corr) = (pl.col(i) for i in _)
@@ -93,7 +79,6 @@ def _code_block_1():
 
 if __name__ == '__main__':
     f1 = path_groupby_date(INPUT1_PATH)
-    f2 = path_groupby_date(INPUT1_PATH)
     # 过滤日期
     f1 = f1["2024-01":]
 

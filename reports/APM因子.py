@@ -7,11 +7,12 @@ import datetime
 import multiprocessing
 import pathlib
 
-import pandas as pd
 import polars as pl
 from expr_codegen.tool import codegen_exec
 from loguru import logger
 from polars_ta.wq import ts_regression_resid, ts_ir, ts_sum, ts_delay
+
+from reports.utils import path_groupby_date
 
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 INPUT2_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_index_minute")
@@ -25,39 +26,17 @@ PM_T2 = datetime.time(15, 00)
 TIMES = [AM_T1, AM_T2, PM_T1, PM_T2]
 TIMES_CLOSE = [AM_T2, PM_T2]
 
-
-def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
-    """将文件名中的时间提取出来"""
-    files = list(input_path.glob(f'*'))
-
-    # 提取文件名中的时间
-    df = pd.DataFrame([f.name.split('.')[0].split("__") for f in files], columns=['start', 'end'])
-    df['path'] = files
-    df['key1'] = pd.to_datetime(df['start'])
-    df['key2'] = df['key1']
-    df.index = df['key1'].copy()
-    df.index.name = 'date'  # 防止无法groupby
-    return df
-
-
 _DATE_ = "date"
 _ASSET_ = "asset"
 
 
 def _code_block_1():
-    # 每一节开始时的价格前移，可用于日内的收益计算
-    OPEN_shift = ts_delay(OPEN, 1)
-    OPEN_i_shift = ts_delay(OPEN_i, 1)
-    # 昨天的收盘价移动
-    CLOSE_shift = ts_delay(CLOSE, 1)
-    CLOSE_i_shift = ts_delay(CLOSE_i, 1)
-
     # 日内收益率
-    RT = CLOSE / OPEN_shift - 1
-    RT_i = CLOSE_i / OPEN_i_shift - 1
+    RT = CLOSE / ts_delay(OPEN, 1) - 1
+    RT_i = CLOSE_i / ts_delay(OPEN_i, 1) - 1
     # 隔夜收益率
-    RY = OPEN / CLOSE_shift - 1
-    RY_i = OPEN_i / CLOSE_i_shift - 1
+    RY = OPEN / ts_delay(CLOSE, 1) - 1
+    RY_i = OPEN_i / ts_delay(CLOSE_i, 1) - 1
 
 
 def _code_block_2():

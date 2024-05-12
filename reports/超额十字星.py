@@ -14,29 +14,16 @@ import polars as pl
 from loguru import logger
 from polars_ta.candles import real_body, upper_shadow, lower_shadow
 
+from reports.utils import path_groupby_date
+
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 INPUT2_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_index_minute")
-
-
-def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
-    """将文件名中的时间提取出来"""
-    files = list(input_path.glob(f'*'))
-
-    # 提取文件名中的时间
-    df = pd.DataFrame([f.name.split('.')[0].split("__") for f in files], columns=['start', 'end'])
-    df['path'] = files
-    df['key1'] = pd.to_datetime(df['start'])
-    df['key2'] = df['key1']
-    df.index = df['key1'].copy()
-    df.index.name = 'date'  # 防止无法groupby
-    return df
-
 
 _ = (r"open", r"high", r"low", r"close", r"volume", r"excess")
 (open, high, low, close, volume, excess) = (pl.col(i) for i in _)
 
-_ = (r"R",)
-(R,) = (pl.col(i) for i in _)
+_ = (r"R", r"R_index")
+(R, R_index) = (pl.col(i) for i in _)
 
 _DATE_ = "date"
 _ASSET_ = "asset"
@@ -61,7 +48,7 @@ def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
     df = df.select(
         pl.col(_DATE_),
         pl.col(_ASSET_),
-        excess=R - pl.col("R_index")
+        excess=R - R_index
     )
     df = df.select(
         pl.col(_DATE_).first(),

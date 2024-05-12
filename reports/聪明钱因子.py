@@ -4,10 +4,11 @@
 import multiprocessing
 import pathlib
 
-import pandas as pd
 import polars as pl
 from loguru import logger
 from polars_ta.wq import abs_
+
+from reports.utils import path_groupby_date
 
 INPUT_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 # 每月取最近10个交易日
@@ -16,21 +17,6 @@ BETAS = [-0.5, -0.25, -0.1, -0.05, 0, 0.05, 0.1, 0.25, 0.33, 0.5, 0.7]
 BETAS_LOG = BETAS + ['log']
 # 阈值
 THRESHOLD = 0.2
-
-
-def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
-    """将文件名中的时间提取出来"""
-    files = list(input_path.glob(f'*'))
-
-    # 提取文件名中的时间
-    df = pd.DataFrame([f.name.split('.')[0].split("__") for f in files], columns=['start', 'end'])
-    df['path'] = files
-    df['key1'] = pd.to_datetime(df['start'])
-    df['key2'] = df['key1']
-    df.index = df['key1'].copy()
-    df.index.name = 'date'  # 防止无法groupby
-    return df
-
 
 _ = (r"open", r"close", r"volume", r"volume_1")
 (open, close, volume, volume_1) = (pl.col(i) for i in _)

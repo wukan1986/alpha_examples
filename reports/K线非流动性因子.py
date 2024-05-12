@@ -6,30 +6,17 @@
 import multiprocessing
 import pathlib
 
-import pandas as pd
 import polars as pl
+from expr_codegen.tool import codegen_exec
 from loguru import logger
 from polars_ta.wq import abs_, ts_mean
 
+from reports.utils import path_groupby_date
+
 INPUT1_PATH = pathlib.Path(r"D:\data\jqresearch\get_price_stock_minute")
 
-
-def path_groupby_date(input_path: pathlib.Path) -> pd.DataFrame:
-    """将文件名中的时间提取出来"""
-    files = list(input_path.glob(f'*'))
-
-    # 提取文件名中的时间
-    df = pd.DataFrame([f.name.split('.')[0].split("__") for f in files], columns=['start', 'end'])
-    df['path'] = files
-    df['key1'] = pd.to_datetime(df['start'])
-    df['key2'] = df['key1']
-    df.index = df['key1'].copy()
-    df.index.name = 'date'  # 防止无法groupby
-    return df
-
-
-_ = (r"open", r"high", r"low", r"close", r"volume", r"amount", r"ShortCut", r"ILLIQ")
-(open, high, low, close, volume, amount, ShortCut, ILLIQ) = (pl.col(i) for i in _)
+_ = (r"open", r"high", r"low", r"close", r"amount", r"ShortCut")
+(open, high, low, close, amount, ShortCut) = (pl.col(i) for i in _)
 
 _ = (r"R",)
 (R,) = (pl.col(i) for i in _)
@@ -68,18 +55,9 @@ def func_file(idx_row):
     return df1
 
 
-def func_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.sort(by=[_DATE_])
-    df = df.with_columns(
-        ILLIQ_1_MA_5=ts_mean(pl.col("ILLIQ_1"), 5),
-        ILLIQ_2_MA_5=ts_mean(pl.col("ILLIQ_2"), 5),
-    )
-    return df
-
-
-def get_1_ts__asset(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.group_by(_ASSET_).map_groups(func_1_ts__asset)
-    return df
+def _code_block_1():
+    ILLIQ_1_MA_5 = ts_mean(ILLIQ_1, 5)
+    ILLIQ_2_MA_5 = ts_mean(ILLIQ_2, 5)
 
 
 if __name__ == '__main__':
@@ -95,7 +73,7 @@ if __name__ == '__main__':
         # polars合并
         output = pl.concat(output)
         output = output.with_columns(pl.col(_DATE_).dt.truncate("1d"))
-        output = get_1_ts__asset(output)
+        output = codegen_exec(_code_block_1, output)
         output.write_parquet("K线非流动性因子.parquet")
         print(output.tail())
 
