@@ -49,7 +49,8 @@ def _code_block_3():
     R_04 = market_cap  # 市值20亿下算微盘股
 
     # 原表达式
-    _1 = HIGH / LOW - 1
+    # _1 = log(ts_mean(VWAP, 20) / (ts_sum(VWAP * volume, 20) / ts_sum(volume, 20)))
+    _1 = ts_mean(log(ts_mean(VWAP, 5) / (ts_sum(VWAP * volume, 5) / ts_sum(volume, 5))), 20)
 
     # 去极值、标准化、中性化
     F_11 = cs_mad_zscore(_1)
@@ -63,7 +64,7 @@ def _code_block_3():
     # F_13 = cs_resid(_1, CS_SW_L1, ONE)
     # F_14 = cs_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
 
-    F_00 = F_11
+    _F_00 = F_11
     # 非线性处理，rank平移后平方
     # F_010 = cs_rank2(F_00, 0.10) * -1
     # F_015 = cs_rank2(F_00, 0.15) * -1
@@ -73,11 +74,11 @@ def _code_block_3():
     # F_035 = cs_rank2(F_00, 0.35) * -1
     # F_040 = cs_rank2(F_00, 0.40) * -1
     # F_045 = cs_rank2(F_00, 0.45) * -1
-    F_050 = cs_rank2(F_00, 0.50) * -1
-    F_055 = cs_rank2(F_00, 0.55) * -1
-    F_060 = cs_rank2(F_00, 0.60) * -1
-    F_065 = cs_rank2(F_00, 0.65) * -1
-    F_070 = cs_rank2(F_00, 0.70) * -1
+    F_050 = cs_rank2(_F_00, 0.50) * -1
+    F_055 = cs_rank2(_F_00, 0.55) * -1
+    F_060 = cs_rank2(_F_00, 0.60) * -1
+    F_065 = cs_rank2(_F_00, 0.65) * -1
+    F_070 = cs_rank2(_F_00, 0.70) * -1
     #
     # F_065 = cs_rank2(cs_mad_zscore(_1), 0.65) * -1
 
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     # TODO 只在中证500中计算，由于剔除和纳入的问题，收益计算发生了改变
     # df = df.filter(pl.col('CSI500') > 0)
     # =====================================
-    df = codegen_exec(_code_block_3, df)
+    df = codegen_exec(df, _code_block_3, output_file='research/t1.py')
 
     # 将计算结果中的inf都换成null
     df = df.with_columns(fill_nan(purify(cs.numeric())))

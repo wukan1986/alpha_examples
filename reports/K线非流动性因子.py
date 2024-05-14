@@ -73,7 +73,7 @@ if __name__ == '__main__':
         # polars合并
         output = pl.concat(output)
         output = output.with_columns(pl.col(_DATE_).dt.truncate("1d"))
-        output = codegen_exec(_code_block_1, output)
+        output = codegen_exec(output, _code_block_1)
         output.write_parquet("K线非流动性因子.parquet")
         print(output.tail())
 

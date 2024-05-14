@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # TODO 只在中证500中计算，由于剔除和纳入的问题，收益计算发生了改变
     # df = df.filter(pl.col('CSI500') > 0)
     # =====================================
-    df = codegen_exec(_code_block_3, df)
+    df = codegen_exec(df, _code_block_3)
 
     # 将计算结果中的inf都换成null
     df = df.with_columns(fill_nan(purify(cs.numeric())))

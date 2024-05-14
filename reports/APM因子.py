@@ -113,7 +113,7 @@ if __name__ == '__main__':
     del df1
     del df2
     logger.info("计算收益率")
-    df3 = codegen_exec(_code_block_1, df3)
+    df3 = codegen_exec(df3, _code_block_1)
 
     # 挑选指定时间点的数据
     df_RO = df3.filter(pl.col(_DATE_).dt.time() == AM_T1).select(pl.col(_DATE_).dt.truncate("1d"), _ASSET_, R=pl.col("RY"), R_i="RY_i")
@@ -123,9 +123,9 @@ if __name__ == '__main__':
 
     logger.info("计算残差")
     # 这个用时久
-    df_EO = codegen_exec(_code_block_2, df_RO)
-    df_EA = codegen_exec(_code_block_2, df_RA)
-    df_EP = codegen_exec(_code_block_2, df_RP)
+    df_EO = codegen_exec(df_RO, _code_block_2)
+    df_EA = codegen_exec(df_RA, _code_block_2)
+    df_EP = codegen_exec(df_RP, _code_block_2)
 
     del df_RO
     del df_RA
@@ -139,10 +139,10 @@ if __name__ == '__main__':
     del df_EP
     # 计算统计量stat
     # TODO 还需要再与ret20回归一下
-    df_APM_raw = codegen_exec(_code_block_3, df_APM_raw).rename({'stat': 'APM_raw'})
-    df_APM_new = codegen_exec(_code_block_3, df_APM_new).rename({'stat': 'APM_new'})
+    df_APM_raw = codegen_exec(df_APM_raw, _code_block_3).rename({'stat': 'APM_raw'})
+    df_APM_new = codegen_exec(df_APM_new, _code_block_3).rename({'stat': 'APM_new'})
 
-    logger.info("W式切割")
+    logger.info("切割")
     df_APM_raw = df_APM_raw.with_columns(AVP=pl.col("rsum") - pl.col("rsum_pm"))
     df_APM_new = df_APM_new.with_columns(OVP=pl.col("rsum") - pl.col("rsum_pm"))
 

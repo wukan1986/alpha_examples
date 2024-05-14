@@ -13,8 +13,7 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.codes import sources_to_exprs
-from expr_codegen.tool import ExprTool
+from expr_codegen.tool import codegen_exec
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
@@ -27,7 +26,7 @@ def cs_label(cond, x, q=20):
     内部函数前缀要统一，否则生成的代码混乱。
     如cs_label与内部的cs_bucket、cs_winsorize_quantile是统一的
     """
-    return if_else(cond, None, cs_bucket(cs_winsorize_quantile(x, 0.01, 0.99), q))
+    return if_else(cond, None, cs_bucket(cs_quantile(x, 0.01, 0.99), q))
 
 
 def _code_block_():
@@ -55,21 +54,7 @@ def _code_block_():
     LABEL_OO_5 = cs_label(NEXT_DOJI, RETURN_OO_5, 20)
 
 
-# 读取源代码，转成字符串
-source = inspect.getsource(_code_block_)
-raw, exprs_dict = sources_to_exprs(globals().copy(), source)
-
-# 生成代码
-tool = ExprTool()
-codes, G = tool.all(exprs_dict, style='polars', template_file='template.py.j2',
-                    replace=True, regroup=True, format=True,
-                    date='date', asset='asset',
-                    # 复制了需要使用的函数，还复制了最原始的表达式
-                    extra_codes=(raw, _code_block_, cs_label,))
-
-print(codes)
-#
-# 保存代码到指定文件
-output_file = 'codes/labels.py'
-with open(output_file, 'w', encoding='utf-8') as f:
-    f.write(codes)
+df = codegen_exec(None,
+                  _code_block_,
+                  extra_codes=inspect.getsource(cs_label),
+                  output_file='codes/labels.py')

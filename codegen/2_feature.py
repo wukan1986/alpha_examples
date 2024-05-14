@@ -8,10 +8,8 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-import inspect
 
-from expr_codegen.codes import sources_to_exprs
-from expr_codegen.tool import ExprTool
+from expr_codegen.tool import codegen_exec
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
@@ -33,21 +31,4 @@ def _code_block_():
     SMA_060 = ts_mean(CLOSE, 60)
 
 
-# 读取源代码，转成字符串
-source = inspect.getsource(_code_block_)
-raw, exprs_dict = sources_to_exprs(globals().copy(), source)
-
-# 生成代码
-tool = ExprTool()
-codes, G = tool.all(exprs_dict, style='polars', template_file='template.py.j2',
-                    replace=True, regroup=True, format=True,
-                    date='date', asset='asset',
-                    # 还复制了最原始的表达式
-                    )
-
-print(codes)
-#
-# 保存代码到指定文件
-output_file = 'codes/features.py'
-with open(output_file, 'w', encoding='utf-8') as f:
-    f.write(codes)
+df = codegen_exec(None, _code_block_, output_file='codes/features.py')

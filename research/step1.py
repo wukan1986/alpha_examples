@@ -89,7 +89,7 @@ if __name__ == '__main__':
     logger.info('数据准备完成')
     # =====================================
 
-    df = codegen_exec(_code_block_1, df)
+    df = codegen_exec(df, _code_block_1)
 
     # 检查成份股权重是否正确
     # df.group_by('date').agg(pl.sum('zz500'), pl.sum('CSI500')).sort('date').to_pandas()
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         pl.col('paused') == 0,  # 过滤停牌，之后才能算收益与打标签
     )
 
-    df = codegen_exec(_code_block_2, df)
+    df = codegen_exec(df, _code_block_2)
 
     # 计算出来的结果需要进行部分修复，防止之后计算时出错
     df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))
