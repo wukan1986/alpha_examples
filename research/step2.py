@@ -28,8 +28,8 @@ def _code_block_3():
     # filter后计算的代码
 
     # TODO 打标签应当在票池中打，还是在全A中打？
-    LABEL_OO_2 = cs_mad_zscore(RETURN_OO_2)
-    LABEL_OO_5 = cs_mad_zscore(RETURN_OO_5)
+    LABEL_OO_02 = cs_mad_zscore(RETURN_OO_02)
+    LABEL_OO_05 = cs_mad_zscore(RETURN_OO_05)
     # LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
 
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
@@ -64,7 +64,7 @@ def _code_block_3():
     # F_13 = cs_resid(_1, CS_SW_L1, ONE)
     # F_14 = cs_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
 
-    _F_00 = F_11
+    _00 = F_11
     # 非线性处理，rank平移后平方
     # F_010 = cs_rank2(F_00, 0.10) * -1
     # F_015 = cs_rank2(F_00, 0.15) * -1
@@ -74,11 +74,11 @@ def _code_block_3():
     # F_035 = cs_rank2(F_00, 0.35) * -1
     # F_040 = cs_rank2(F_00, 0.40) * -1
     # F_045 = cs_rank2(F_00, 0.45) * -1
-    F_050 = cs_rank2(_F_00, 0.50) * -1
-    F_055 = cs_rank2(_F_00, 0.55) * -1
-    F_060 = cs_rank2(_F_00, 0.60) * -1
-    F_065 = cs_rank2(_F_00, 0.65) * -1
-    F_070 = cs_rank2(_F_00, 0.70) * -1
+    F_050 = cs_rank2(_00, 0.50) * -1
+    F_055 = cs_rank2(_00, 0.55) * -1
+    F_060 = cs_rank2(_00, 0.60) * -1
+    F_065 = cs_rank2(_00, 0.65) * -1
+    F_070 = cs_rank2(_00, 0.70) * -1
     #
     # F_065 = cs_rank2(cs_mad_zscore(_1), 0.65) * -1
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     # TODO 只在中证500中计算，由于剔除和纳入的问题，收益计算发生了改变
     # df = df.filter(pl.col('CSI500') > 0)
     # =====================================
-    df = codegen_exec(df, _code_block_3, output_file='research/t1.py')
+    df = codegen_exec(df, _code_block_3)
 
     # 将计算结果中的inf都换成null
     df = df.with_columns(fill_nan(purify(cs.numeric())))

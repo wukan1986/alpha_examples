@@ -42,14 +42,31 @@ def _code_block_2():
     # 明日停牌
     NEXT_DOJI = ts_delay(DOJI, -1)
 
-    # # 远期收益率,由于平移过,含未来数据，只能用于打标签，不能用于训练
-    # RETURN_OC_1 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1) - 1
-    # RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
-    # RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
-    RETURN_OO_1 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1) - 1
-    RETURN_OO_2 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1) - 1
-    RETURN_OO_5 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1) - 1
-    # RETURN_OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1) - 1
+    # 远期收益率,由于平移过,含未来数据，只能用于打标签，不能用于训练
+    _OC_01 = ts_delay(CLOSE, -1) / ts_delay(OPEN, -1)
+    _CC_01 = ts_delay(CLOSE, -1) / CLOSE
+    _CO_01 = ts_delay(OPEN, -1) / CLOSE
+    _OO_01 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1)
+
+    _OO_02 = ts_delay(OPEN, -3) / ts_delay(OPEN, -1)
+    _OO_05 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1)
+    _OO_10 = ts_delay(OPEN, -11) / ts_delay(OPEN, -1)
+
+    # 一期收益率
+    RETURN_OC_01 = _OC_01 - 1
+    RETURN_CC_01 = _CC_01 - 1
+    RETURN_CO_01 = _CO_01 - 1
+    RETURN_OO_01 = _OO_01 - 1
+
+    # 算术平均
+    RETURN_OO_02 = (_OO_02 - 1) / 2
+    RETURN_OO_05 = (_OO_05 - 1) / 5
+    RETURN_OO_10 = (_OO_10 - 1) / 10
+
+    # 几何平均
+    RETURN_OO_02 = _OO_02 ** (1 / 2) - 1
+    RETURN_OO_05 = _OO_05 ** (1 / 5) - 1
+    RETURN_OO_10 = _OO_10 ** (1 / 10) - 1
 
 
 # =======================================
@@ -99,7 +116,7 @@ if __name__ == '__main__':
         pl.col('paused') == 0,  # 过滤停牌，之后才能算收益与打标签
     )
 
-    df = codegen_exec(df, _code_block_2)
+    df = codegen_exec(df, _code_block_2, output_file='research/t2.py')
 
     # 计算出来的结果需要进行部分修复，防止之后计算时出错
     df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))

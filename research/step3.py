@@ -35,8 +35,8 @@ output.mkdir(parents=True, exist_ok=True)
 
 def func(kv):
     name, factors = kv
-    fwd_ret_1 = 'RETURN_OO_1'
-    forward_return = 'LABEL_OO_5'
+    fwd_ret_1 = 'RETURN_OO_05'
+    forward_return = 'LABEL_OO_05'
     period = 5
     axvlines = ('2024-01-01',)
     quantiles = 10
@@ -59,16 +59,14 @@ def func(kv):
     imgs = []
     for factor in factors:
         # 明日涨跌停分到-1组
-        df_mean[factor] = df.group_by(f'_fq_{factor}').agg(pl.mean(forward_return)).drop_nulls().to_pandas().set_index(f'_fq_{factor}').iloc[:, 0]
-        df_std[factor] = df.group_by(f'_fq_{factor}').agg(pl.std(forward_return)).drop_nulls().to_pandas().set_index(f'_fq_{factor}').iloc[:, 0]
-
-        fig, ic_dict, hist_dict, df_cum_ret = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
-                                                               period=period,
-                                                               factor_quantile=f'_fq_{factor}',
-                                                               figsize=(12, 3),
-                                                               axvlines=axvlines)
-        s1 = df_cum_ret.iloc[-1]
+        fig, ic_dict, hist_dict, cum, avg, std = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
+                                                                  factor_quantile=f'_fq_{factor}',
+                                                                  figsize=(12, 3),
+                                                                  axvlines=axvlines)
+        s1 = cum.iloc[-1]
         df_last[factor] = s1
+        df_mean[factor] = avg
+        df_std[factor] = std
 
         s2 = {'monotonic': np.sign(s1.diff()).sum()}
         s3 = pd.Series(s2 | ic_dict | hist_dict)
@@ -113,16 +111,16 @@ if __name__ == '__main__':
             # 'F_010',
             # 'F_015',
             # 'F_020',
-            'F_025',
-            'F_030',
-            'F_035',
+            # 'F_025',
+            # 'F_030',
+            # 'F_035',
             # 'F_040',
             # 'F_045',
-            # 'F_050',
-            # 'F_055',
-            # 'F_060',
-            # 'F_065',
-            # 'F_070',
+            'F_050',
+            'F_055',
+            'F_060',
+            'F_065',
+            'F_070',
         ],
     }
     t0 = time.perf_counter()

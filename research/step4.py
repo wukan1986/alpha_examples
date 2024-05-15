@@ -28,8 +28,8 @@ def _code_block_3():
     # filter后计算的代码
 
     # TODO 打标签应当在票池中打，还是在全A中打？
-    LABEL_OO_2 = cs_mad_zscore(RETURN_OO_2)
-    LABEL_OO_5 = cs_mad_zscore(RETURN_OO_5)
+    LABEL_OO_02 = cs_mad_zscore(RETURN_OO_02)
+    LABEL_OO_05 = cs_mad_zscore(RETURN_OO_05)
     # LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
 
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
@@ -49,7 +49,8 @@ def _code_block_3():
     R_04 = market_cap  # 市值20亿下算微盘股
 
     # 原表达式
-    _1 = HIGH / LOW - 1
+    # _1 = log(ts_mean(VWAP, 20) / (ts_sum(VWAP * volume, 20) / ts_sum(volume, 20)))
+    _1 = ts_mean(log(ts_mean(VWAP, 5) / (ts_sum(VWAP * volume, 5) / ts_sum(volume, 5))), 20)
 
     # 去极值、标准化、中性化
     F_11 = cs_mad_zscore(_1)
@@ -63,7 +64,7 @@ def _code_block_3():
     # F_13 = cs_resid(_1, CS_SW_L1, ONE)
     # F_14 = cs_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
 
-    F_00 = F_11
+    _00 = F_11
     # 非线性处理，rank平移后平方
     # F_010 = cs_rank2(F_00, 0.10) * -1
     # F_015 = cs_rank2(F_00, 0.15) * -1
@@ -73,11 +74,11 @@ def _code_block_3():
     # F_035 = cs_rank2(F_00, 0.35) * -1
     # F_040 = cs_rank2(F_00, 0.40) * -1
     # F_045 = cs_rank2(F_00, 0.45) * -1
-    F_050 = cs_rank2(F_00, 0.50) * -1
-    F_055 = cs_rank2(F_00, 0.55) * -1
-    F_060 = cs_rank2(F_00, 0.60) * -1
-    F_065 = cs_rank2(F_00, 0.65) * -1
-    F_070 = cs_rank2(F_00, 0.70) * -1
+    F_050 = cs_rank2(_00, 0.50) * -1
+    F_055 = cs_rank2(_00, 0.55) * -1
+    F_060 = cs_rank2(_00, 0.60) * -1
+    F_065 = cs_rank2(_00, 0.65) * -1
+    F_070 = cs_rank2(_00, 0.70) * -1
     #
     # F_065 = cs_rank2(cs_mad_zscore(_1), 0.65) * -1
 
