@@ -85,12 +85,22 @@ def _code_block_3():
 
 if __name__ == '__main__':
     # 去除停牌后的基础数据
-    INPUT_PATH = r'M:\data3\T1\feature1.parquet'
+    INPUT1_PATH = r'M:\data3\T1\feature1.parquet'
+
     # 添加新特证，有可能因过滤问题，某些股票在票池中反复剔除和纳入
     OUTPUT_PATH = r'M:\data3\T1\feature2.parquet'
 
-    logger.info('数据准备, {}', INPUT_PATH)
-    df = pl.read_parquet(INPUT_PATH)
+    logger.info('准备基础数据, {}', INPUT1_PATH)
+    df = pl.read_parquet(INPUT1_PATH)
+
+    # 演示从其它地方合并数据
+    # INPUT2_PATH = r'D:\GitHub\alpha_examples\reports\买卖压力TWAP.parquet'
+    # logger.info('准备扩展数据, {}', INPUT2_PATH)
+    # df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'twap', 'ARPP'])
+    # df2 = df2.with_columns(pl.col('date').cast(pl.Datetime(time_unit='us')))
+    # df = df.join(df2, on=['date', 'asset'], how='left')
+    # df.filter(pl.col('date') >= datetime(2018, 1, 1))
+
     print(df.columns)
     # 没有纳入剔除影响的过滤可以提前做
     df = df.filter(
