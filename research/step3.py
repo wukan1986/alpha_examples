@@ -11,13 +11,13 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-import time
 import multiprocessing
+import time
 
 import matplotlib.pyplot as plt
 import polars as pl
 from alphainspect.reports import create_1x3_sheet, fig_to_img, html_template
-from alphainspect.utils import with_factor_quantile, with_quantile_tradable
+from alphainspect.utils import with_factor_quantile
 from loguru import logger
 
 # 导入OPEN等特征
@@ -37,7 +37,6 @@ def func(kv):
     name, factors = kv
     fwd_ret_1 = 'RETURN_OO_05'
     forward_return = 'LABEL_OO_05'
-    period = 5
     axvlines = ('2024-01-01',)
     quantiles = 10
 
@@ -48,7 +47,7 @@ def func(kv):
 
     for factor in factors:
         df2 = with_factor_quantile(df2, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
-        df2 = with_quantile_tradable(df2, f'_fq_{factor}', 'NEXT_DOJI')
+        df2 = df2.filter(~pl.col('NEXT_DOJI'))
 
     # 合并，特征数据由于过滤了了一些记录，不够用来计算收益，所以需要合并
     df = df1.join(df2, on=['date', 'asset'], how='left')

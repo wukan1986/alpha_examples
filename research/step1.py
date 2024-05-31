@@ -8,12 +8,10 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-from datetime import datetime
-from loguru import logger
-
 import polars as pl
 import polars.selectors as cs
 from expr_codegen.tool import codegen_exec
+from loguru import logger
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
@@ -28,10 +26,10 @@ def _code_block_1():
     # 不少成份股数据源每月底更新，而不是每天更新，所以需要用以下方法推算
     # 注意1：在成份股调整月，如果缺少调整日的权重信息当月后一段的数据不准确
     # 注意2：不在成份股的权重要为0，否则影响之后计算，所以停牌也得保留
-    # SSE50 = cs_scale(ts_zip_prod(cs_fill_zero(sz50), ROCR), 100)
-    # CSI300 = cs_scale(ts_zip_prod(cs_fill_zero(hs300), ROCR), 100)
+    SSE50 = cs_scale(ts_zip_prod(cs_fill_zero(sz50), ROCR), 100)
+    CSI300 = cs_scale(ts_zip_prod(cs_fill_zero(hs300), ROCR), 100)
     CSI500 = cs_scale(ts_zip_prod(cs_fill_zero(zz500), ROCR), 100)
-    # CSI1000 = cs_scale(ts_zip_prod(cs_fill_zero(zz1000), ROCR), 100)
+    CSI1000 = cs_scale(ts_zip_prod(cs_fill_zero(zz1000), ROCR), 100)
 
 
 def _code_block_2():
@@ -106,17 +104,8 @@ if __name__ == '__main__':
     logger.info('数据准备完成')
     # =====================================
 
-    df = codegen_exec(df, _code_block_1)
-
-    # 检查成份股权重是否正确
-    # df.group_by('date').agg(pl.sum('zz500'), pl.sum('CSI500')).sort('date').to_pandas()
-    # =====================================
-    df = df.filter(
-        pl.col('date') >= datetime(2018, 1, 1),  # 过滤要测试用的数据时间范围
-        pl.col('paused') == 0,  # 过滤停牌，之后才能算收益与打标签
-    )
-
-    df = codegen_exec(df, _code_block_2, output_file='research/t2.py')
+    df = codegen_exec(df, _code_block_1).filter(pl.col('paused') == 0)
+    df = codegen_exec(df, _code_block_2)
 
     # 计算出来的结果需要进行部分修复，防止之后计算时出错
     df = df.with_columns(pl.col('NEXT_DOJI').fill_null(False))

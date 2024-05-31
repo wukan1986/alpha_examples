@@ -1,7 +1,6 @@
 # %%
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -11,18 +10,16 @@ sys.path.append(pwd)
 # ===============
 # %%
 import polars as pl
-from matplotlib import pyplot as plt
-
 from alphainspect.ic import create_ic2_sheet
 from alphainspect.selection import drop_above_corr_thresh
 from alphainspect.utils import select_by_suffix
+from matplotlib import pyplot as plt
 
 INPUT_PATH = r'M:\data3\T1\feature2.parquet'
 df_output = pl.read_parquet(INPUT_PATH)
 
 # x = df_output.filter(pl.col('date') == datetime(2024, 4, 12))
 # %%
-period = 5
 axvlines = ('2024-01-01',)
 
 # 考察因子

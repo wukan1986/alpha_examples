@@ -23,11 +23,11 @@ INPUT2_PATH = r'M:\data3\T1\feature2.parquet'
 # 行情信息，只跳过了停牌，其它都不能跳过，否则计算收益会出错
 df1 = pl.read_parquet(INPUT1_PATH, columns=['date', 'asset', 'OPEN', 'CLOSE'], use_pyarrow=True)
 # 特征。由于过滤了票池以及其它条件，所以数据长度相对短
-df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI', 'A_0007'], use_pyarrow=True).rename({'A_0007': 'FACT'})
+df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI', 'score'], use_pyarrow=True)
 
-df2 = df2.filter(pl.col('FACT').is_not_null())
+df2 = df2.filter(pl.col('score').is_not_null())
 # 由于因子值可能重复，导致前10选出的值是随机的，所以这里还多加了按代码排序，实际情况可能还要考虑其它指标
-df2 = df2.group_by('date').map_groups(lambda x: x.sort(['FACT', 'asset'], descending=[True, False]).head(20))
+df2 = df2.group_by('date').map_groups(lambda x: x.sort(['score', 'asset'], descending=[True, False]).head(20))
 
 # 过滤第二天涨跌停
 df2 = df2.filter(~pl.col('NEXT_DOJI'))
@@ -38,7 +38,7 @@ del df2
 
 
 def __code_block_1():
-    FACTOR = ts_delay(FACT, 1)
+    FACTOR = ts_delay(score, 1)
 
 
 df = codegen_exec(df, __code_block_1)
@@ -77,9 +77,10 @@ df['asset'] = df['asset'].map(bt.mapping_asset_int)
 bt.run_bars(groupby(orders_daily(df, sort=True), by='date', dtype=order_outside_dt))
 trades = bt.trades(return_all=True)
 print(trades)
+trades.to_excel("trades.xlsx")
 perf = bt.performances(return_all=True)
 
 equity = total_equity(perf)['equity']
 print(equity.tail())
-equity.plot()
+equity.plot(grid=True)
 plt.show()

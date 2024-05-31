@@ -3,7 +3,6 @@
 """
 import os
 import sys
-
 from pathlib import Path
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -16,8 +15,11 @@ import re
 
 import polars as pl
 import polars.selectors as cs
+from alphainspect.reports import create_1x3_sheet
+from alphainspect.utils import with_factor_top_k
 from expr_codegen.tool import codegen_exec
 from loguru import logger
+from matplotlib import pyplot as plt
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
@@ -38,54 +40,20 @@ def _code_block_3():
     LABEL_OO_05 = cs_mad_zscore(RETURN_OO_05)
     LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
 
-    # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
-    # 对数市值。去极值，标准化
-    LOG_MC_ZS = cs_mad_zscore(LOG_MC)
-    # # 对数市值。行业中性化
-    # LOG_MC_NEUT = cs_mad_zscore_resid(LOG_MC_ZS, CS_SW_L1, ONE)
-    # # 非线性市值，中市值因子
-    # LOG_MC_NL = cs_mad_zscore(cs_resid(LOG_MC ** 3, LOG_MC, ONE))
-    # # 为何2次方看起来与3次方效果一样？
-    # LOG_MC_NL = cs_mad_zscore(cs_resid(LOG_MC ** 2, LOG_MC, ONE))
+    volatility_60 = cs_zscore(ts_std_dev(ROCR, 60))
+    volatility_120 = cs_zscore(ts_std_dev(ROCR, 120))
+    volume_15 = cs_zscore(ts_mean(volume, 15))
+    score = -1 * (volatility_60 + volatility_120) + volume_15
 
-    # TODO 风控指标，不参与因子计算前的过滤，不参与机器学习，但参与最后的下单过滤
-    R_01 = CLOSE / ts_mean(CLOSE, 5)  # 市价在5日均线上方
-    R_02 = ts_mean(CLOSE, 5) / ts_mean(CLOSE, 20)  # 5日均线在20日均线上方
-    R_03 = close  # 低于3元的股价不考虑
-    R_04 = market_cap  # 市值20亿下算微盘股
+    # 条件过滤
+    volatility_240 = cs_rank(ts_std_dev(ROCR, 240))
+    turn_7 = cs_rank(ts_delay(turnover_ratio, 7))
 
-    # 原表达式
-    # _1 = log(ts_mean(VWAP, 20) / (ts_sum(VWAP * volume, 20) / ts_sum(volume, 20)))
-    _1 = ts_mean(log(ts_mean(VWAP, 5) / (ts_sum(VWAP * volume, 5) / ts_sum(volume, 5))), 20)
+    return_30 = cs_rank(CLOSE / ts_delay(CLOSE, 30))
+    return_90 = cs_rank(CLOSE / ts_delay(CLOSE, 90))
 
-    # 去极值、标准化、中性化
-    F_11 = cs_mad_zscore(_1)
-    F_12 = cs_mad_zscore_resid(_1, LOG_MC_ZS, ONE)
-    F_13 = cs_mad_zscore_resid(_1, CS_SW_L1, ONE)
-    F_14 = cs_mad_zscore_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
-
-    # 中性化
-    # F_11 = _1
-    # F_12 = cs_resid(_1, LOG_MC_ZS, ONE)
-    # F_13 = cs_resid(_1, CS_SW_L1, ONE)
-    # F_14 = cs_resid(_1, CS_SW_L1, LOG_MC_ZS, ONE)
-
-    _00 = F_11
-    # 非线性处理，rank平移后平方
-    # F_010 = cs_rank2(F_00, 0.10) * -1
-    # F_015 = cs_rank2(F_00, 0.15) * -1
-    # F_020 = cs_rank2(F_00, 0.20) * -1
-    # F_025 = cs_rank2(F_00, 0.25) * -1
-    # F_030 = cs_rank2(F_00, 0.30) * -1
-    # F_035 = cs_rank2(F_00, 0.35) * -1
-    # F_040 = cs_rank2(F_00, 0.40) * -1
-    # F_045 = cs_rank2(F_00, 0.45) * -1
-    F_050 = cs_rank2(_00, 0.50) * -1
-    F_055 = cs_rank2(_00, 0.55) * -1
-    F_060 = cs_rank2(_00, 0.60) * -1
-    F_065 = cs_rank2(_00, 0.65) * -1
-    F_070 = cs_rank2(_00, 0.70) * -1
-    #
+    filter = and_(volatility_240 <= 0.3, turn_7 >= 0.7,
+                  return_30 < 0.5, return_90 > 0.5)
 
 
 if __name__ == '__main__':
@@ -136,5 +104,19 @@ if __name__ == '__main__':
     logger.info('特征计算完成')
     # =====================================
     # 推荐保存到内存盘中
-    df.write_parquet(OUTPUT_PATH)
-    logger.info('特征保存完成, {}', OUTPUT_PATH)
+    # df.write_parquet(OUTPUT_PATH)
+    # logger.info('特征保存完成, {}', OUTPUT_PATH)
+    # =====================================
+    factor = 'score'
+    fwd_ret_1 = 'RETURN_OO_02'
+    forward_return = 'LABEL_OO_02'
+    axvlines = ('2024-01-01',)
+
+    # df = with_factor_quantile(df, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
+    df = with_factor_top_k(df, factor, top_k=10, factor_quantile=f'_fq_{factor}')
+    fig, ic_dict, hist_dict, cum, avg, std = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
+                                                              factor_quantile=f'_fq_{factor}',
+                                                              figsize=(12, 6),
+                                                              axvlines=axvlines)
+
+    plt.show()
