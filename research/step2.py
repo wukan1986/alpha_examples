@@ -6,6 +6,8 @@ import sys
 
 from pathlib import Path
 
+from research.utils import with_industry
+
 # 修改当前目录到上层目录，方便跨不同IDE中使用
 pwd = str(Path(__file__).parents[1])
 os.chdir(pwd)
@@ -107,16 +109,7 @@ if __name__ == '__main__':
     # df.filter(pl.col('date') >= datetime(2018, 1, 1))
 
     print(df.columns)
-    # 没有纳入剔除影响的过滤可以提前做
-    df = df.filter(
-        pl.col('sw_l1').is_not_null(),  # TODO 没有行业的也过滤，这会不会有问题？
-    )
-
-    # TODO drop_first丢弃哪个字段是随机的，非常不友好，只能在行业中性化时动态修改代码
-    df = df.with_columns(df.to_dummies('sw_l1', drop_first=True))
-    sw_l1_columns = list(filter(lambda x: re.search(r"^sw_l1_\d+$", x), df.columns))
-    print(sw_l1_columns)
-
+    df = with_industry(df, 'sw_l1')
     logger.info('数据准备完成')
 
     # =====================================

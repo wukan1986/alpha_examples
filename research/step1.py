@@ -92,8 +92,6 @@ if __name__ == '__main__':
         pl.col('volume').log1p().alias('LOG_VOLUME'),
         pl.col('market_cap').log1p().alias('LOG_MC'),
         pl.col('circulating_market_cap').log1p().alias('LOG_FC'),
-        # 行业处理，由浮点改成整数
-        pl.col('sw_l1', 'sw_l2', 'sw_l3').cast(pl.UInt32),
     ])
 
     # 后复权

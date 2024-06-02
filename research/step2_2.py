@@ -5,6 +5,9 @@ import os
 import sys
 from pathlib import Path
 
+from alphainspect.reports import create_1x3_sheet
+from matplotlib import pyplot as plt
+
 from research.utils import with_industry
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
@@ -13,15 +16,11 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-import re
 
 import polars as pl
 import polars.selectors as cs
-from alphainspect.reports import create_1x3_sheet
-from alphainspect.utils import with_factor_top_k
 from expr_codegen.tool import codegen_exec
 from loguru import logger
-from matplotlib import pyplot as plt
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
@@ -42,20 +41,14 @@ def _code_block_3():
     LABEL_OO_05 = cs_mad_zscore(RETURN_OO_05)
     LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
 
-    volatility_60 = cs_zscore(ts_std_dev(ROCR, 60))
-    volatility_120 = cs_zscore(ts_std_dev(ROCR, 120))
-    volume_15 = cs_zscore(ts_mean(volume, 15))
-    score = -1 * (volatility_60 + volatility_120) + volume_15
-
-    # 条件过滤
-    volatility_240 = cs_rank(ts_std_dev(ROCR, 240))
-    turn_7 = cs_rank(ts_delay(turnover_ratio, 7))
-
-    return_30 = cs_rank(CLOSE / ts_delay(CLOSE, 30))
-    return_90 = cs_rank(CLOSE / ts_delay(CLOSE, 90))
-
-    filter = and_(volatility_240 <= 0.3, turn_7 >= 0.7,
-                  return_30 < 0.5, return_90 > 0.5)
+    MA_005 = ts_mean(CLOSE, 5)
+    MA_010 = ts_mean(CLOSE, 10)
+    MA_020 = ts_mean(CLOSE, 20)
+    MA_040 = ts_mean(CLOSE, 40)
+    MA_120 = ts_mean(CLOSE, 120)
+    long_entry = and_(MA_005 > MA_010, MA_010 > MA_020, MA_020 > MA_040, MA_040 > MA_120, LOW < MA_010)
+    long_exit = MA_005 < MA_040
+    score = ts_signals_to_amount(long_entry, long_exit, short_entry, short_exit, False, False)
 
 
 if __name__ == '__main__':
@@ -77,13 +70,13 @@ if __name__ == '__main__':
     # df.filter(pl.col('date') >= datetime(2018, 1, 1))
 
     print(df.columns)
-    # 没有纳入剔除影响的过滤可以提前做
     df = with_industry(df, 'sw_l1')
 
     logger.info('数据准备完成')
 
     # =====================================
     # 有纳入剔除影响的过滤
+    df = df.with_columns(long_entry=False, long_exit=False, short_entry=False, short_exit=False)
     df = codegen_exec(df, _code_block_1).filter(pl.col('filter'))
     df = codegen_exec(df, _code_block_3)
 
@@ -107,8 +100,10 @@ if __name__ == '__main__':
     forward_return = 'LABEL_OO_02'
     axvlines = ('2024-01-01',)
 
-    # df = with_factor_quantile(df, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
-    df = with_factor_top_k(df, factor, top_k=10, factor_quantile=f'_fq_{factor}')
+    # 二元不用分层了
+    df = df.with_columns(pl.col(factor).alias(f'_fq_{factor}'))
+    # df = with_factor_quantile(df, factor, quantiles=2, factor_quantile=f'_fq_{factor}')
+    # df = with_factor_top_k(df, factor, top_k=10, factor_quantile=f'_fq_{factor}')
     fig, ic_dict, hist_dict, cum, avg, std = create_1x3_sheet(df, factor, forward_return, fwd_ret_1,
                                                               factor_quantile=f'_fq_{factor}',
                                                               figsize=(12, 6),
