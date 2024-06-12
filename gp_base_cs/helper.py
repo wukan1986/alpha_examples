@@ -34,12 +34,12 @@ def root_operator(df: pl.DataFrame):
 
     """
     from polars_ta.prefix.wq import ts_zscore  # noqa
-    from polars_ta.prefix.wq import cs_winsorize_mad, cs_standardize_zscore  # noqa
+    from polars_ta.prefix.wq import cs_mad, cs_zscore  # noqa
 
     def func_0_cs__date(df: pl.DataFrame) -> pl.DataFrame:
         # ========================================
         df = df.with_columns(
-            cs_standardize_zscore(cs_winsorize_mad(pl.col(r'^GP_\d+$'))),
+            cs_zscore(cs_mad(pl.col(r'^GP_\d+$'))),
         )
         return df
 
