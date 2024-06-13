@@ -11,6 +11,19 @@ import polars.selectors as cs
 from expr_codegen.tool import codegen_exec
 from polars_ta.wq import ts_delay, ts_cum_prod
 
+
+def filter_assets(df: pl.DataFrame, assets: List[str], exclude: bool = True, asset='asset') -> pl.DataFrame:
+    # 使用product时防止B与BB被starts_with匹配了
+    exprs = [pl.col(asset) == a for a in assets]
+    # exprs = [pl.col(asset).str.starts_with(a) for a in assets]
+    expr = pl.any_horizontal(exprs)
+    if exclude:
+        expr = ~expr
+
+    df = df.filter(expr)
+    return df
+
+
 # 加载全部行情
 df1 = pl.read_parquet(r'M:\data\jqresearch\get_price_futures_daily', use_pyarrow=True).rename({'time': 'date', 'code': 'asset'})
 
@@ -19,6 +32,10 @@ df2 = pl.read_parquet(r'M:\data\jqresearch\get_dominant_futures', use_pyarrow=Tr
 df2 = df2.melt(id_vars="date", value_vars=cs.numeric(), value_name='asset', variable_name='product')
 # join时时间格式要统一
 df2 = df2.with_columns(pl.col('date').str.to_datetime(time_unit='us'))
+
+# 提前排除流动性不好的品种
+drop_assets = ['WH', 'RI', 'PM', 'ZC', 'LR', 'JR', 'RS', 'BB', 'WR', 'RR', 'CY', 'FB', 'BC']
+df2 = filter_assets(df2, drop_assets, exclude=True, asset='product')
 
 
 def _code_block_1():
@@ -47,21 +64,3 @@ del df2
 # TODO !!! 非常重要，分组是用product而不是asset，否则结果是错的
 df3 = codegen_exec(df3, _code_block_2, asset='product')
 print(df3)
-
-
-# ============
-
-def filter_assets(df: pl.DataFrame, assets: List[str], exclude: bool = True, asset='asset') -> pl.DataFrame:
-    exprs = [pl.col(asset).str.starts_with(a) for a in assets]
-    expr = pl.any_horizontal(exprs)
-    if exclude:
-        expr = ~expr
-
-    df = df.filter(expr)
-    return df
-
-
-# 还要排除流动性不好的品种
-drop_assets = ['WH', 'RI', 'PM', 'ZC', 'LR', 'JR', 'RS', 'BB', 'WR', 'RR', 'CY', 'FB', 'BC']
-df4 = filter_assets(df3, drop_assets, exclude=True, asset='product')
-print(df4)
