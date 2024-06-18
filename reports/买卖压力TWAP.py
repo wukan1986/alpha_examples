@@ -56,6 +56,7 @@ def func_files(name_group) -> pl.DataFrame:
 
     df = pl.read_parquet(group['path'].to_list()).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
     df = df.filter(pl.col("paused") == 0)
+    df = df.sort(_ASSET_, _DATE_)
 
     df = df.with_columns(pl.col(_DATE_).dt.truncate("1d").alias("date_"))
 
