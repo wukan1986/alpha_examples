@@ -35,6 +35,7 @@ df = pd.DataFrame({
     'close': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     'vwap': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     'volume': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
+    'AMOUNT': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     # TODO 昨收价。从交易所查询得来。注意：由于除权除息的原因，昨收价不等于昨天的收盘价
     'pre_close': np.cumprod(1 + np.random.uniform(-0.1, 0.1, size=(_N, _K)), axis=0).reshape(-1),
     # TODO 后复权因子。后复权因子不会历史数据不会变化
@@ -46,7 +47,7 @@ df = pd.DataFrame({
 # 向脚本输入数据
 df = pl.from_pandas(df)
 # 数据长度不同
-df = df.filter(pl.col('FILTER') == 1).drop(columns=['FILTER'])
+df = df.filter(pl.col('FILTER') == 1).drop('FILTER')
 
 # 复权
 df = df.with_columns([

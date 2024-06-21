@@ -8,7 +8,7 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-
+import more_itertools
 from expr_codegen.tool import codegen_exec
 
 # 导入OPEN等特征
@@ -38,7 +38,25 @@ def _code_block_():
     RETURNS = ts_returns(CLOSE, 1)
 
 
+# 读取因子表达式
 with open('transformer/alpha101_out.txt', 'r') as f:
-    source1 = f.read()
+    source1 = f.readlines()
 
-df = codegen_exec(None, _code_block_, source1, output_file='codes/alpha101.py')
+# TODO 加载数据
+df = None
+# df = pl.read_parquet('data/data.parquet')
+
+# 计算初始一批因子
+df = codegen_exec(df, _code_block_)
+
+# 所有因子一起计算，占用内存大
+# df = codegen_exec(df, '\n'.join(source1))
+
+# 101个因子并不多，但中间过程会有大量临时列，占用内存较大，所以分成几批减少内存
+BATCH_SIZE = 30
+for i, sources in enumerate(more_itertools.batched(source1, BATCH_SIZE)):
+    print(f'batch {i}')
+    df = codegen_exec(df, '\n'.join(sources))
+
+# print(df.tail())
+# df.write_parquet('alpha101_out.parquet')
