@@ -29,7 +29,7 @@ df1 = pl.read_parquet(r'M:\data\jqresearch\get_price_futures_daily', use_pyarrow
 
 # 加载换月信息，其中product是品种，asset是合约
 df2 = pl.read_parquet(r'M:\data\jqresearch\get_dominant_futures', use_pyarrow=True).rename({'__index_level_0__': 'date'})
-df2 = df2.melt(id_vars="date", value_vars=cs.numeric(), value_name='asset', variable_name='product')
+df2 = df2.unpivot(index="date", on=cs.numeric(), value_name='asset', variable_name='product')
 # join时时间格式要统一
 df2 = df2.with_columns(pl.col('date').str.to_datetime(time_unit='us'))
 
