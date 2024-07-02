@@ -45,12 +45,16 @@ def func(kv):
     # 只记录特征，收益不全
     df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI', forward_return] + factors, use_pyarrow=True)
 
+    # !!! 提前排序，否则计算时会很慢
+    df2 = df2.sort('date', 'asset')
     for factor in factors:
         df2 = with_factor_quantile(df2, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
         df2 = df2.filter(~pl.col('NEXT_DOJI'))
 
     # 合并，特征数据由于过滤了了一些记录，不够用来计算收益，所以需要合并
+    df1 = df1.sort('date', 'asset')
     df = df1.join(df2, on=['date', 'asset'], how='left')
+    df = df.sort('date', 'asset')
     tbl = {}
     df_mean = {}
     df_std = {}
