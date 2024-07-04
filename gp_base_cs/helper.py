@@ -106,7 +106,7 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
     logger.info("{}代{}批 因子 计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", gen, batch_id, elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
 
     # 计算种群适应度
-    ic_train, ir_train, ic_valid, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
+    ic_train, ic_valid, ir_train, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
     logger.info("{}代{}批 适应度 计算完成", gen, batch_id)
 
     # 样本内外适应度提取
