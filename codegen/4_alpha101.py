@@ -8,11 +8,13 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
+import polars as pl  # noqa
 import more_itertools
 from expr_codegen.tool import codegen_exec
 
 # 导入OPEN等特征
 from sympy_define import *  # noqa
+import polars as pl  # noqa
 
 
 def _code_block_():
@@ -43,8 +45,8 @@ with open('transformer/alpha101_out.txt', 'r') as f:
     source1 = f.readlines()
 
 # TODO 加载数据
-df = None
-# df = pl.read_parquet('data/data.parquet')
+# df = None
+df = pl.read_parquet('data/data.parquet')
 
 # 计算初始一批因子
 df = codegen_exec(df, _code_block_)
@@ -56,7 +58,7 @@ df = codegen_exec(df, _code_block_)
 BATCH_SIZE = 30
 for i, sources in enumerate(more_itertools.batched(source1, BATCH_SIZE)):
     print(f'batch {i}')
-    df = codegen_exec(df, '\n'.join(sources))
+    df = codegen_exec(df, '\n'.join(sources), output_file='1_out.py')
 
 # print(df.tail())
 # df.write_parquet('alpha101_out.parquet')

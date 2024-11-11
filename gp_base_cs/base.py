@@ -118,7 +118,7 @@ def population_to_exprs(population, globals_):
         return {}
     sources = [f'GP_{i:04d}={stringify_for_sympy(expr)}' for i, expr in enumerate(population)]
     # sources.insert(0, 'GP_000=1') # DEBUG
-    raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources))
+    raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
     return exprs_dict
 
 

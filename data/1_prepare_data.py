@@ -69,7 +69,7 @@ print(df.tail())
 df = df.select(pl.all().shrink_dtype())
 df = df.shrink_to_fit()
 
-print(df.tail())
+print(df.sort('asset', 'date').tail())
 
 logger.info('保存')
 df.write_parquet('data/data.parquet')

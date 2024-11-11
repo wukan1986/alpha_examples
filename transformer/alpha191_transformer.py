@@ -1,7 +1,7 @@
 import ast
 import re
 
-from expr_codegen.codes import source_replace, SympyTransformer
+from expr_codegen.codes import source_replace, RenameTransformer, SyntaxTransformer
 
 encoding = 'utf-8'
 input_file = 'alpha191.txt'
@@ -23,7 +23,7 @@ with open(input_file, 'r', encoding=encoding) as f:
     source = '\n'.join(sources[:1000])
     source = code_replace(source)
     tree = ast.parse(source_replace(source))
-    st = SympyTransformer()
+    st = RenameTransformer({}, {})
     st.visit(tree)
 
     print('=' * 60)
@@ -100,8 +100,9 @@ class Alpha191Transformer(ast.NodeTransformer):
 with open(input_file, 'r', encoding=encoding) as f:
     sources = f.readlines()
 
-    st = SympyTransformer()
-    st.config_map(funcs_map, args_map, targets_map)
+    t1 = SyntaxTransformer()
+    t1.convert_xor = True
+    st = RenameTransformer(funcs_map, args_map, targets_map)
 
     at = Alpha191Transformer()
 
@@ -112,6 +113,7 @@ with open(input_file, 'r', encoding=encoding) as f:
         source = code_replace(source)
 
         tree = ast.parse(source_replace(source))
+        t1.visit(tree)
         st.visit(tree)
         at.visit(tree)
         outputs.append(ast.unparse(tree))
