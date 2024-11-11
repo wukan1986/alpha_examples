@@ -3,6 +3,10 @@
 
 这里提供示例生成后复权因子和对应的价格
 
+分为乘除复权和加减复权，
+加减复权适合用手数记录持仓的情况
+乘除复权适合用于资金百分比等资产配置
+
 """
 from typing import List
 
@@ -43,13 +47,10 @@ def _code_block_1():
     close_1 = ts_delay(close, 1)
 
 
-def _code_block_2():
+def _code_block_mul_div():
     # 同product的移动
-    _close_1 = ts_delay(close, 1)
-    # 仅在切换日非1
-    _f = _close_1 / close_1
-    # 后复权因子
-    factor = ts_cum_prod(_f)
+    # 乘除后复权因子
+    factor = ts_cum_prod(ts_delay(close, 1) / close_1)
     # 后复权开高低收
     OPEN = open * factor
     HIGH = high * factor
@@ -57,10 +58,23 @@ def _code_block_2():
     CLOSE = close * factor
 
 
+def _code_block_add_sub():
+    # 同product的移动
+    # 加减后复权因子
+    factor = ts_cum_sum(ts_delay(close, 1) - close_1)
+    # 后复权开高低收
+    OPEN = open + factor
+    HIGH = high + factor
+    LOW = low + factor
+    CLOSE = close + factor
+
+
 df1 = codegen_exec(df1, _code_block_1)
 df3 = df2.join(df1, on=['date', 'asset'], how='left', coalesce=True)
 del df1
 del df2
 # TODO !!! 非常重要，分组是用product而不是asset，否则结果是错的
-df3 = codegen_exec(df3, _code_block_2, asset='product')
+df3 = codegen_exec(df3, _code_block_mul_div, asset='product')
 print(df3)
+df4 = df3.filter(pl.col('product') == 'ZN')
+print(df4.to_pandas())
