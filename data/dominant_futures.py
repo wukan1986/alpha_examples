@@ -8,12 +8,12 @@
 乘除复权适合用于资金百分比等资产配置
 
 """
+import sys
 from typing import List
 
 import polars as pl
 import polars.selectors as cs
 from expr_codegen.tool import codegen_exec
-from polars_ta.wq import ts_delay, ts_cum_prod
 
 
 def filter_assets(df: pl.DataFrame, assets: List[str], exclude: bool = True, asset='asset') -> pl.DataFrame:
@@ -44,13 +44,13 @@ df2 = filter_assets(df2, drop_assets, exclude=True, asset='product')
 
 def _code_block_1():
     # 同asset下的移动
-    close_1 = ts_delay(close, 1)
+    close_1 = close[1]
 
 
 def _code_block_mul_div():
     # 同product的移动
     # 乘除后复权因子
-    factor = ts_cum_prod(ts_delay(close, 1) / close_1)
+    factor = ts_cum_prod(close[1] / close_1)
     # 后复权开高低收
     OPEN = open * factor
     HIGH = high * factor
@@ -61,7 +61,7 @@ def _code_block_mul_div():
 def _code_block_add_sub():
     # 同product的移动
     # 加减后复权因子
-    factor = ts_cum_sum(ts_delay(close, 1) - close_1)
+    factor = ts_cum_sum(close[1] - close_1)
     # 后复权开高低收
     OPEN = open + factor
     HIGH = high + factor
@@ -69,12 +69,12 @@ def _code_block_add_sub():
     CLOSE = close + factor
 
 
-df1 = codegen_exec(df1, _code_block_1)
+df1 = codegen_exec(df1, _code_block_1, output_file=sys.stdout)
 df3 = df2.join(df1, on=['date', 'asset'], how='left', coalesce=True)
 del df1
 del df2
 # TODO !!! 非常重要，分组是用product而不是asset，否则结果是错的
-df3 = codegen_exec(df3, _code_block_mul_div, asset='product')
+df3 = codegen_exec(df3, _code_block_mul_div, asset='product', output_file=sys.stdout)
 print(df3)
 df4 = df3.filter(pl.col('product') == 'ZN')
 print(df4.to_pandas())

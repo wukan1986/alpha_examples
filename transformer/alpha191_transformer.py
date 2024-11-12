@@ -100,8 +100,7 @@ class Alpha191Transformer(ast.NodeTransformer):
 with open(input_file, 'r', encoding=encoding) as f:
     sources = f.readlines()
 
-    t1 = SyntaxTransformer()
-    t1.convert_xor = True
+    t1 = SyntaxTransformer(True)
     st = RenameTransformer(funcs_map, args_map, targets_map)
 
     at = Alpha191Transformer()
