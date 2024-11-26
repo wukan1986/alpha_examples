@@ -25,7 +25,7 @@ def _code_block_1():
     最高涨停 = high >= high_limit - 0.001
     收盘涨停 = close >= high_limit - 0.001
     昨收涨停 = ts_delay(收盘涨停, 1, False)
-    # 化简后逻辑表达式更复杂了
+    # TODO 化简后逻辑表达式更复杂了，最好能简化一下
     封板 = (~昨收涨停 & 开盘涨停) | (~开盘涨停 & 最高涨停)
     炸板 = (昨收涨停 & ~开盘涨停) | (最高涨停 & ~收盘涨停)
 
@@ -38,6 +38,7 @@ df = df.group_by("asset", "date").agg(
     首次封板=pl.col("datetime").filter(pl.col('封板')).first(),
     最后封板=pl.col("datetime").filter(pl.col('封板')).last(),
 )
+df.write_parquet(r"分时炸板.parquet")
 
 df = df.filter(pl.col("炸板次数") >= 5).sort("asset", "date")
 
