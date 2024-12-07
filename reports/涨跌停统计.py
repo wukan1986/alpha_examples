@@ -6,7 +6,7 @@
 import pathlib
 
 import polars as pl
-from expr_codegen.tool import codegen_exec
+from expr_codegen import codegen_exec
 
 风格板块 = [
     'AB股',
@@ -71,7 +71,7 @@ from expr_codegen.tool import codegen_exec
 ]
 
 # 建议每个月更新概念板块一次
-files = list(pathlib.Path(r"D:\data\akshare\stock_board_concept_cons_em\20241114").glob(f'*.parquet'))
+files = list(pathlib.Path(r"D:\data\akshare\stock_board_concept_cons_em\20241204").glob(f'*.parquet'))
 df_board = []
 for file in files:
     # 部分概念已经过时，剔除
@@ -99,7 +99,7 @@ def _code_block_1():
     收盘跌停 = close <= low_limit + 0.001
     连板天数 = ts_cum_sum_reset(收盘涨停)
     涨停T天, 涨停N板, _ = ts_up_stat(收盘涨停)
-    放量 = volume / volume[1]
+    放量 = volume / ts_mean(volume, 3)[1]
 
 
 df_stock = codegen_exec(df_stock, _code_block_1)
@@ -109,7 +109,7 @@ df_stock = df_stock.filter(pl.col('date') >= DATE1)
 df_stock.group_by('date').agg(涨停数=pl.col('收盘涨停').sum(), 跌停数=pl.col('收盘跌停').sum()).sort('date').write_csv('涨跌停比.csv')
 
 # 观察某几天
-DATE2 = pl.date(2024, 11, 25)
+DATE2 = pl.date(2024, 12, 6)
 df_stock = df_stock.filter(pl.col('date') >= DATE2)
 
 df_stock_board = df_stock.join(df_board, how='left', left_on=['code'], right_on=['代码'])  # .filter(pl.col('board').is_not_null())

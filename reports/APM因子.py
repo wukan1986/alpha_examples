@@ -10,7 +10,7 @@ import pathlib
 import polars as pl
 from expr_codegen.tool import codegen_exec
 from loguru import logger
-from polars_ta.wq import ts_regression_resid, ts_ir, ts_sum, ts_delay
+from polars_ta.wq import ts_regression_resid, ts_ir, ts_sum
 
 from reports.utils import path_groupby_date
 
@@ -32,11 +32,11 @@ _ASSET_ = "asset"
 
 def _code_block_1():
     # 日内收益率
-    RT = CLOSE / ts_delay(OPEN, 1) - 1
-    RT_i = CLOSE_i / ts_delay(OPEN_i, 1) - 1
+    RT = CLOSE / OPEN[1] - 1
+    RT_i = CLOSE_i / OPEN_i[1] - 1
     # 隔夜收益率
-    RY = OPEN / ts_delay(CLOSE, 1) - 1
-    RY_i = OPEN_i / ts_delay(CLOSE_i, 1) - 1
+    RY = OPEN / CLOSE[1] - 1
+    RY_i = OPEN_i / CLOSE_i[1] - 1
 
 
 def _code_block_2():

@@ -13,10 +13,7 @@ print("pwd:", os.getcwd())
 # ====================
 import inspect
 
-from expr_codegen.tool import codegen_exec
-
-# 导入OPEN等特征
-from sympy_define import *  # noqa
+from expr_codegen import codegen_exec
 
 
 def cs_label(cond, x, q=20):
@@ -26,7 +23,7 @@ def cs_label(cond, x, q=20):
     内部函数前缀要统一，否则生成的代码混乱。
     如cs_label与内部的cs_bucket、cs_winsorize_quantile是统一的
     """
-    return if_else(cond, None, cs_bucket(cs_quantile(x, 0.01, 0.99), q))
+    return if_else(cond, None, cs_qcut(cs_quantile(x, 0.01, 0.99), q))
 
 
 def _code_block_():
@@ -37,14 +34,14 @@ def _code_block_():
     # 今日涨停或跌停
     DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE)
     # 明日涨停或跌停
-    NEXT_DOJI = ts_delay(DOJI, -1)
+    NEXT_DOJI = DOJI[-1]
 
     # 远期收益率
-    RETURN_CC_1 = ts_delay(CLOSE, -1) / CLOSE - 1
-    RETURN_CO_1 = ts_delay(OPEN, -1) / CLOSE - 1
-    RETURN_OC_1 = ts_delay(OPEN, -1) / ts_delay(CLOSE, -1) - 1
-    RETURN_OO_1 = ts_delay(OPEN, -2) / ts_delay(OPEN, -1) - 1
-    RETURN_OO_5 = ts_delay(OPEN, -6) / ts_delay(OPEN, -1) - 1
+    RETURN_CC_1 = CLOSE[-1] / CLOSE - 1
+    RETURN_CO_1 = OPEN[-1] / CLOSE - 1
+    RETURN_OC_1 = OPEN[-1] / CLOSE[-1] - 1
+    RETURN_OO_1 = OPEN[-2] / OPEN[-1] - 1
+    RETURN_OO_5 = OPEN[-6] / OPEN[-1] - 1
 
     # 标签
     LABEL_CC_1 = cs_label(DOJI, RETURN_CC_1, 20)

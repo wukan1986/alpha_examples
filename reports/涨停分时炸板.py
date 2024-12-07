@@ -1,5 +1,5 @@
 import polars as pl
-from expr_codegen.tool import codegen_exec
+from expr_codegen import codegen_exec
 
 # 从日线中取涨跌停
 df_1d = (pl.read_parquet(r"M:\preprocessing\data1.parquet")
@@ -21,11 +21,12 @@ del df_1d
 
 def _code_block_1():
     # 一下表达式都是用于分钟。因为没有tick数据只能用分钟模拟
+    # 并不是正的涨停，而是成交价格达到涨停价，卖一价可能还有挂单
     开盘涨停 = open >= high_limit - 0.001
     最高涨停 = high >= high_limit - 0.001
     收盘涨停 = close >= high_limit - 0.001
     昨收涨停 = ts_delay(收盘涨停, 1, False)
-    # TODO 化简后逻辑表达式更复杂了，最好能简化一下
+
     封板 = (~昨收涨停 & 开盘涨停) | (~开盘涨停 & 最高涨停)
     炸板 = (昨收涨停 & ~开盘涨停) | (最高涨停 & ~收盘涨停)
 

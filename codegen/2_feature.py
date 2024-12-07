@@ -9,10 +9,7 @@ sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
 
-from expr_codegen.tool import codegen_exec
-
-# 导入OPEN等特征
-from sympy_define import *  # noqa
+from expr_codegen import codegen_exec
 
 
 def _code_block_():

@@ -53,13 +53,6 @@ from gp_base_cs.base import print_population, population_to_exprs, filter_exprs
 # TODO 多资产多因子，计算截面IC,使用gp_base_cs
 from gp_base_ts.custom import add_constants, add_operators, add_factors, RET_TYPE
 from gp_base_ts.helper import batched_exprs, fill_fitness
-# ==========================
-# !!! 引入算子
-# from polars_ta.prefix.talib import *  # noqa
-from polars_ta.prefix.tdx import *  # noqa
-from polars_ta.prefix.ta import *  # noqa
-from polars_ta.prefix.wq import *  # noqa
-from polars_ta.prefix.cdl import *  # noqa
 
 logger.remove()  # 这行很关键，先删除logger自动产生的handler，不然会出现重复输出的问题
 logger.add(sys.stderr, level='INFO')  # 只输出INFO以上的日志
