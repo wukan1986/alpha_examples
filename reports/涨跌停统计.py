@@ -95,18 +95,43 @@ print(df_stock.schema)
 
 
 def _code_block_1():
+    # 注意：由于没有买卖一价，这里的涨停只是成交价触及涨停价，卖一价可能还有挂单
     收盘涨停 = close >= high_limit - 0.001
+    最高涨停 = high >= high_limit - 0.001
+    最低涨停 = low >= high_limit - 0.001
     收盘跌停 = close <= low_limit + 0.001
     连板天数 = ts_cum_sum_reset(收盘涨停)
     涨停T天, 涨停N板, _ = ts_up_stat(收盘涨停)
     放量 = volume / ts_mean(volume, 3)[1]
+    炸板 = 最高涨停 & ~收盘涨停
+    晋级 = 连板天数 > 1
+    首板 = 连板天数 == 1
+    一进二 = 连板天数 == 2
+    二进三 = 连板天数 == 3
+    昨板 = 收盘涨停[1]
+    收盘收益率 = CLOSE / CLOSE[1] - 1
+    开盘收益率 = OPEN / CLOSE[1] - 1
 
 
 df_stock = codegen_exec(df_stock, _code_block_1)
 # 观察本年
 DATE1 = pl.date(2024, 1, 1)
 df_stock = df_stock.filter(pl.col('date') >= DATE1)
-df_stock.group_by('date').agg(涨停数=pl.col('收盘涨停').sum(), 跌停数=pl.col('收盘跌停').sum()).sort('date').write_csv('涨跌停比.csv')
+# 可以加入板块，热门板块晋级率更高
+df_stock.group_by('date').agg(
+    涨停家数=pl.col('收盘涨停').sum(),
+    跌停家数=pl.col('收盘跌停').sum(),
+    高停家数=pl.col('最高涨停').sum(),
+    一字家数=pl.col('最低涨停').sum(),
+    炸板家数=pl.col('炸板').sum(),
+    连板家数=pl.col('晋级').sum(),
+    连板高度=pl.col('连板天数').max(),
+    晋级率=pl.col('晋级').sum() / pl.col('昨板').sum(),
+    打板收益率_开=pl.col('开盘收益率').filter(pl.col('昨板')).mean(),
+    打板收益率_收=pl.col('收盘收益率').filter(pl.col('昨板')).mean(),
+).with_columns(
+    炸板率=pl.col('炸板家数') / pl.col('高停家数'),
+).sort('date').write_csv('涨跌停比.csv')
 
 # 观察某几天
 DATE2 = pl.date(2024, 12, 6)
