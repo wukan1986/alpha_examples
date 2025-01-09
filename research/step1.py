@@ -26,10 +26,10 @@ def _code_block_1():
     # 不少成份股数据源每月底更新，而不是每天更新，所以需要用以下方法推算
     # 注意1：在成份股调整月，如果缺少调整日的权重信息当月后一段的数据不准确
     # 注意2：不在成份股的权重要为0，否则影响之后计算，所以停牌也得保留
-    SSE50 = cs_scale(ts_zip_prod(cs_fill_zero(sz50), ROCR), 100)
-    CSI300 = cs_scale(ts_zip_prod(cs_fill_zero(hs300), ROCR), 100)
-    CSI500 = cs_scale(ts_zip_prod(cs_fill_zero(zz500), ROCR), 100)
-    CSI1000 = cs_scale(ts_zip_prod(cs_fill_zero(zz1000), ROCR), 100)
+    SSE50 = cs_scale(ts_cum_prod_by(ROCR, cs_fill_except_all_null(sz50)), 100)
+    CSI300 = cs_scale(ts_cum_prod_by(ROCR, cs_fill_except_all_null(hs300)), 100)
+    CSI500 = cs_scale(ts_cum_prod_by(ROCR, cs_fill_except_all_null(zz500)), 100)
+    CSI1000 = cs_scale(ts_cum_prod_by(ROCR, cs_fill_except_all_null(zz1000)), 100)
 
 
 def _code_block_2():
@@ -73,9 +73,9 @@ def _code_block_2():
 
 if __name__ == '__main__':
     # 由于读写多，推荐放到内存盘，加快速度
-    INPUT_PATH = r'M:\data3\T1\data.parquet'
+    INPUT_PATH = r'M:\preprocessing\data2.parquet'
     # 去除停牌后的基础数据
-    OUTPUT_PATH = r'M:\data3\T1\feature1.parquet'
+    OUTPUT_PATH = r'M:\preprocessing\delete2.parquet'
 
     logger.info('数据准备, {}', INPUT_PATH)
     df = pl.read_parquet(INPUT_PATH)
