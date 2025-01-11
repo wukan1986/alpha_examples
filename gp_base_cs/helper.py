@@ -98,9 +98,9 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
     logger.info("{}代{}批 代码 开始执行。共 {} 条 表达式", gen, batch_id, cnt)
     tic = time.perf_counter()
 
-    globals_ = {'df_input': df_input}
+    globals_ = {}
     exec(codes, globals_)
-    df_output = globals_['df_output']
+    df_output = globals_['main'](df_input)
 
     elapsed_time = time.perf_counter() - tic
     logger.info("{}代{}批 因子 计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", gen, batch_id, elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
