@@ -4,11 +4,12 @@ from expr_codegen import codegen_exec
 # 从日线中取涨跌停
 df_1d = (pl.read_parquet(r"M:\preprocessing\data1.parquet").filter(pl.col("paused") == 0)
          .rename({"time": "date", "code": "asset"})
-         .select("date", "asset", "high_limit", "low_limit", "volume"))
+         .select("date", "asset", "high_limit", "low_limit", "volume", "circulating_cap"))
 
 
 def _code_block_0():
     过去5日平均每分钟成交量 = ts_sum(volume, 5)[1] / (240 * 5)
+    换手率 = volume / (circulating_cap * 10000)  # 流通股本单位为万
 
 
 df_1d = codegen_exec(df_1d, _code_block_0, output_file="2_out.py")
