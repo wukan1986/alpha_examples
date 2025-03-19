@@ -60,7 +60,7 @@ alpha_059 = -1 * ts_rank(ts_decay_linear(ts_corr(gp_demean(INDUSTRY, VWAP * 0.72
 alpha_060 = 0 - 1 * (2 * cs_scale(cs_rank((CLOSE - LOW - (HIGH - CLOSE)) / (HIGH - LOW) * VOLUME)) - cs_scale(cs_rank(ts_arg_max(CLOSE, 10))))
 alpha_061 = cs_rank(VWAP - ts_min(VWAP, 16)) < cs_rank(ts_corr(VWAP, ADV180, 18))
 alpha_063 = (cs_rank(ts_decay_linear(ts_delta(gp_demean(INDUSTRY, CLOSE), 2), 8)) - cs_rank(ts_decay_linear(ts_corr(VWAP * 0.318108 + OPEN * (1 - 0.318108), ts_sum(ADV180, 37), 14), 12))) * -1
-alpha_064 = int_(cs_rank(ts_corr(ts_sum(OPEN * 0.178404 + LOW * (1 - 0.178404), 13), ts_sum(ADV120, 13), 17)) < cs_rank(ts_delta((HIGH + LOW) / 2 * 0.178404 + VWAP * (1 - 0.178404), 4))) * -1
+alpha_064 = int_(cs_rank(ts_corr(ts_sum(OPEN * 0.178404 + LOW * (1 - 0.178404), 13), ts_sum(ADV120, 13), 17)) < cs_rank(ts_delta((HIGH + LOW) / 2 * 0.178404 + VWAP * (1 - 0.178404), 4))) * -1 - in function func_1_cs__date cs_rank is calculated on ts_delta in second part of inequality, expected ts_delta is computed in ts function before: alpha_064=(-int_(cs_rank(_x_2) < cs_rank(ts_delta((0.178404 * HIGH + 0.178404 * LOW + 1.643192 * VWAP) / 2, 4)))).over(_DATE_)
 alpha_065 = int_(cs_rank(ts_corr(OPEN * 0.00817205 + VWAP * (1 - 0.00817205), ts_sum(ADV60, 9), 6)) < cs_rank(OPEN - ts_min(OPEN, 14))) * -1
 alpha_066 = (cs_rank(ts_decay_linear(ts_delta(VWAP, 4), 7)) + ts_rank(ts_decay_linear((LOW * 0.96633 + LOW * (1 - 0.96633) - VWAP) / (OPEN - (HIGH + LOW) / 2), 11), 7)) * -1
 alpha_067 = Pow(cs_rank(HIGH - ts_min(HIGH, 2)), cs_rank(ts_corr(gp_demean(SECTOR, VWAP), gp_demean(SUBINDUSTRY, ADV20), 6))) * -1
