@@ -5,7 +5,7 @@ alpha_004 = if_else(ts_sum(CLOSE, 8) / 8 + ts_std_dev(CLOSE, 8) < ts_sum(CLOSE, 
 alpha_005 = -1 * ts_max(ts_corr(ts_rank(VOLUME, 5), ts_rank(HIGH, 5), 5), 3)
 alpha_006 = cs_rank(sign(ts_delta(OPEN * 0.85 + HIGH * 0.15, 4))) * -1
 alpha_007 = (cs_rank(max_(VWAP - CLOSE, 3)) + cs_rank(min_(VWAP - CLOSE, 3))) * cs_rank(ts_delta(VOLUME, 3))
-alpha_008 = cs_rank(ts_delta((HIGH + LOW) / 2 * 0.2 + VWAP * 0.8, 4) * -1)
+alpha_008 = cs_rank(ts_delta((HIGH + LOW) / 2 * 0.2 + VWAP * 0.8, 4) * -1) - function func_0_cs__date will compute cs_rank(ts_delta..). It gives missing entries for some stocks. Instead if we compute _x_1=ts_delta(..) in ts function and then apply cs_rank on it, will be correct. Can you please have a look. Thanks
 alpha_009 = ts_SMA_CN(((HIGH + LOW) / 2 - (ts_delay(HIGH, 1) + ts_delay(LOW, 1)) / 2) * (HIGH - LOW) / VOLUME, 7, 2)
 alpha_010 = cs_rank(max_(Pow(if_else(RET < 0, ts_std_dev(RET, 20), CLOSE), 2), 5))
 alpha_011 = ts_sum((CLOSE - LOW - (HIGH - CLOSE)) / (HIGH - LOW) * VOLUME, 6)
