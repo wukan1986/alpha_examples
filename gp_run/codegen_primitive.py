@@ -12,13 +12,15 @@ def get_function_annotation(module, startswith):
     names = []
     modules = []
     for name, func in funcs:
+        # if name != 'ts_mean':
+        #     continue
         mstr: str = func.__module__
         if mstr.startswith(startswith):
             sig = inspect.signature(func)
             ps = sig.parameters
             # 一定得有类型注解
             vv = [v.annotation.__name__ for k, v in ps.items()]
-            vv = [v for v in vv if v != '_empty']
+            vv = [v for v in vv if v not in ('_empty', 'Optional')]
             if len(vv) == 0:
                 continue
             txt = f"pset.addPrimitive(dummy, [{', '.join(vv)}], Expr, name='{name}')"
