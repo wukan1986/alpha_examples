@@ -47,7 +47,7 @@ import more_itertools
 # ==========================
 # !!! 非常重要。给deap打补丁
 from gp_base_cs.deap_patch import *  # noqa
-from gp_base_cs.base import print_population, population_to_exprs, filter_exprs
+from gp_base_cs.base import print_population, population_to_exprs, filter_exprs, strings_to_sympy
 # ==========================
 # TODO 单资产多因子，计算时序IC,使用gp_base_ts
 # TODO 多资产多因子，计算截面IC,使用gp_base_cs
@@ -121,6 +121,7 @@ def map_exprs(evaluate, invalid_ind, gen, label, split_date):
 # ======================================
 # 这里的ret_type只要与addPrimitive对应即可
 pset = gp.PrimitiveSetTyped("MAIN", [], RET_TYPE)
+# pset = gp.PrimitiveSet("MAIN", 1)
 pset = add_constants(pset)
 pset = add_operators(pset)
 pset = add_factors(pset)
@@ -181,10 +182,30 @@ if __name__ == "__main__":
     print('另行执行`tensorboard --logdir=runs`，然后在浏览器中访问`http://localhost:6006/`，可跟踪运行情况')
     logger.warning('运行前请检查`fitness_cache.pkl`是否要手工删除。数据集、切分时间发生了变化一定要删除，否则重复的表达式不会参与计算')
 
-    with open(LOG_DIR / f'hall_of_fame.pkl', 'rb') as f:
-        pop = pickle.load(f)
+    # TODO 这演示从从字符串中加载种群，继续优化
+    # OPEN-log(CLOSE)
+    # ts_zscore(LOW, 40)
+    # ts_zscore(log(LOW), 40)
+    exprs = """
+OPEN-log(CLOSE)
+ts_zscore(LOW, 40)
+ts_zscore(log(LOW), 40)
+1+OPEN
+    """
+    exprs = [e for e in exprs.splitlines() if e.strip() != ""]
+    pop = strings_to_sympy(exprs, globals().copy())
+    # TODO 由于PrimitiveSetTyped的限制，不是所有的表达式都能正常转换
+    pop = [creator.Individual.from_string(str(v), pset) for k, v in pop.items()]
 
-    population, logbook, hof = main(pop=list(pop.items))
+    # TODO 这演示从历史的名人堂钟加载种群，继续优化
+    try:
+        with open(LOG_DIR / f'hall_of_fame.pkl', 'rb') as f:
+            pop = pickle.load(f)
+            pop = list(pop.items)
+    except FileNotFoundError:
+        pop = None
+
+    population, logbook, hof = main(pop=pop)
 
     # 保存名人堂
     with open(LOG_DIR / f'hall_of_fame.pkl', 'wb') as f:

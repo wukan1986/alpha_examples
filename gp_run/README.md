@@ -86,6 +86,6 @@ Q: 为何生成的表达式无法直接使用?
 A: 项目涉及到几个模块`sympy`、`deap`、`LaTeX`，`polars_ta`，需要取舍。以`max`为例
 
 1. `polar_ta`，为了不与`buildins`冲突，所以命名为`max_`
-2. `deap`中，为了按参数类型生成表达式更合理，所以定义了`imax(OPEN, 1)`与`fmax(OPEN, CLOSE)`
+2. `deap`中，为了按参数类型生成表达式更合理，所以定义了`ai_max(OPEN, 1)`、`ia_max(1, OPEN)`与`aa_max(OPEN, CLOSE)`
 3. `deap`生成后通过`convert_inverse_prim`生成`sympy`进行简化提取公共子表达式
 4. `sympy`有`Max`内部可通过`LatexPrinter`转到`LaTeX`后是`max`，`LaTeX`支持的好处是Notebook中更直观

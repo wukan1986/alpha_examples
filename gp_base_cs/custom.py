@@ -29,20 +29,26 @@ def add_constants(pset):
 def add_operators_base(pset):
     """基础算子"""
     # 无法给一个算子定义多种类型，只好定义多个不同名算子，之后通过helper.py中的convert_inverse_prim修正
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='fadd')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='fsub')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='fmul')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='fdiv')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='fmax')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='fmin')
+    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_add')
+    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_sub')
+    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_mul')
+    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_div')
+    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_max')
+    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_min')
 
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='iadd')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='isub')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='imul')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='idiv')
-    # !!! max(x,1)这类表达式是合法的，但生成数量太多价值就低了，所以屏蔽
-    # pset.addPrimitive(dummy, [Expr, int], Expr, name='imax')
-    # pset.addPrimitive(dummy, [Expr, int], Expr, name='imin')
+    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_add')
+    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_sub')
+    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_mul')
+    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_div')
+    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_max')
+    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_min')
+
+    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_add')
+    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_sub')
+    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_mul')
+    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_div')
+    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_max')
+    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_min')
 
     pset.addPrimitive(dummy, [Expr], Expr, name='log')
     pset.addPrimitive(dummy, [Expr], Expr, name='sign')

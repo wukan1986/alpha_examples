@@ -4,7 +4,7 @@ from typing import Dict
 from expr_codegen.codes import sources_to_exprs
 from expr_codegen.expr import is_meaningless
 from loguru import logger
-from sympy import preorder_traversal
+from sympy import Basic, Function, symbols, preorder_traversal
 
 
 def convert_inverse_prim(prim, args):
@@ -17,19 +17,26 @@ def convert_inverse_prim(prim, args):
     prim = copy.copy(prim)
 
     converter = {
-        'fsub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
-        'fdiv': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
-        'fmul': lambda *args_: "Mul({},{})".format(*args_),
-        'fadd': lambda *args_: "Add({},{})".format(*args_),
-        'fmax': lambda *args_: "max_({},{})".format(*args_),
-        'fmin': lambda *args_: "min_({},{})".format(*args_),
+        'aa_sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
+        'aa_div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
+        'aa_mul': lambda *args_: "Mul({},{})".format(*args_),
+        'aa_add': lambda *args_: "Add({},{})".format(*args_),
+        'aa_max': lambda *args_: "max_({},{})".format(*args_),
+        'aa_min': lambda *args_: "min_({},{})".format(*args_),
 
-        'isub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
-        'idiv': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
-        'imul': lambda *args_: "Mul({},{})".format(*args_),
-        'iadd': lambda *args_: "Add({},{})".format(*args_),
-        'imax': lambda *args_: "max_({},{})".format(*args_),
-        'imin': lambda *args_: "min_({},{})".format(*args_),
+        'ai_sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
+        'ai_div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
+        'ai_mul': lambda *args_: "Mul({},{})".format(*args_),
+        'ai_add': lambda *args_: "Add({},{})".format(*args_),
+        'ai_max': lambda *args_: "max_({},{})".format(*args_),
+        'ai_min': lambda *args_: "min_({},{})".format(*args_),
+
+        'ia_sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
+        'ia_div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
+        'ia_mul': lambda *args_: "Mul({},{})".format(*args_),
+        'ia_add': lambda *args_: "Add({},{})".format(*args_),
+        'ia_max': lambda *args_: "max_({},{})".format(*args_),
+        'ia_min': lambda *args_: "min_({},{})".format(*args_),
     }
     prim_formatter = converter.get(prim.name, prim.format)
 
@@ -50,6 +57,64 @@ def stringify_for_sympy(f):
                 break  # If stack is empty, all nodes should have been seen
             stack[-1][1].append(string)
     return string
+
+
+def get_node_name(node):
+    """得到节点名"""
+    if hasattr(node, 'name'):
+        # 如 ts_arg_max
+        node_name = node.name
+    else:
+        # 如 Add
+        node_name = str(node.func.__name__)
+    return node_name
+
+
+def convert_inverse_sympy(e):
+    if not isinstance(e, Basic):
+        return e
+
+    replacements = []
+    for node in preorder_traversal(e):
+        node_name = get_node_name(node)
+
+        if node_name in ('max_', 'min_'):
+            func_name = list(f"aa_{node_name}")[:-1]
+            if node.args[0].is_Number:
+                func_name[0] = 'i'
+            if node.args[1].is_Number:
+                func_name[1] = 'i'
+            func = symbols(''.join(func_name), cls=Function)
+            replacements.append((node, func(node.args[0], node.args[1])))
+
+        if node_name == 'Add':
+            last_node = node.args[0]
+            for arg2 in node.args[1:]:
+                func_name = list('aa_add')
+                if last_node.is_Number:
+                    func_name[0] = 'i'
+                if arg2.is_Number:
+                    func_name[1] = 'i'
+                func = symbols(''.join(func_name), cls=Function)
+                last_node = func(last_node, arg2)
+            replacements.append((node, last_node))
+
+        if node_name == 'Mul':
+            last_node = node.args[0]
+            for arg2 in node.args[1:]:
+                func_name = list('aa_mul')
+                if last_node.is_Number:
+                    func_name[0] = 'i'
+                if arg2.is_Number:
+                    func_name[1] = 'i'
+                func = symbols(''.join(func_name), cls=Function)
+                last_node = func(last_node, arg2)
+            replacements.append((node, last_node))
+
+    for node, replacement in replacements:
+        print(node, '  ->  ', replacement)
+        e = e.xreplace({node: replacement})
+    return e
 
 
 def is_invalid(e, pset, ret_type):
@@ -105,11 +170,18 @@ def get_fitness(name: str, kv: Dict[str, float]) -> float:
     return kv.get(name, False) or float('nan')
 
 
-def print_population(population, globals_):
+def print_population(population, globals_, more=True):
     """打印种群"""
     exprs_dict = population_to_exprs(population, globals_)
-    for (k, v), i in zip(exprs_dict.items(), population):
-        print(f'{k}', '\t', i.fitness, '\t', v, '\t<--->\t', i)
+
+    if more:
+        # 打印时更好看
+        for (k, v), i in zip(exprs_dict.items(), population):
+            print(f'{k}', '\t', i.fitness, '\t', v, '\t<--->\t', i)
+    else:
+        # 输出到expr_codegen时更方便
+        for (k, v), i in zip(exprs_dict.items(), population):
+            print(f'{k}={v}')
 
 
 def population_to_exprs(population, globals_):
@@ -119,6 +191,16 @@ def population_to_exprs(population, globals_):
     sources = [f'GP_{i:04d}={stringify_for_sympy(expr)}' for i, expr in enumerate(population)]
     # sources.insert(0, 'GP_000=1') # DEBUG
     raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
+    return exprs_dict
+
+
+def strings_to_sympy(population, globals_):
+    """字符串转表达式"""
+    if len(population) == 0:
+        return {}
+    sources = [f'GP_{i:04d}={expr}' for i, expr in enumerate(population)]
+    raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
+    exprs_dict = {k: convert_inverse_sympy(v) for k, v in exprs_dict.items()}
     return exprs_dict
 
 
