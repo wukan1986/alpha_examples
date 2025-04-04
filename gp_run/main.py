@@ -152,12 +152,13 @@ stats.register("min", np.nanmin, axis=0)
 stats.register("max", np.nanmax, axis=0)
 
 
-def main():
+def main(pop=None):
     # TODO: 伪随机种子，同种子可复现
     random.seed(9527)
 
-    # TODO: 初始种群大小
-    pop = toolbox.population(n=100)
+    if pop is None:
+        # TODO: 初始种群大小
+        pop = toolbox.population(n=100)
     # TODO: 名人堂，表示最终选优多少个体
     hof = tools.HallOfFame(1000)
 
@@ -180,7 +181,10 @@ if __name__ == "__main__":
     print('另行执行`tensorboard --logdir=runs`，然后在浏览器中访问`http://localhost:6006/`，可跟踪运行情况')
     logger.warning('运行前请检查`fitness_cache.pkl`是否要手工删除。数据集、切分时间发生了变化一定要删除，否则重复的表达式不会参与计算')
 
-    population, logbook, hof = main()
+    with open(LOG_DIR / f'hall_of_fame.pkl', 'rb') as f:
+        pop = pickle.load(f)
+
+    population, logbook, hof = main(pop=list(pop.items))
 
     # 保存名人堂
     with open(LOG_DIR / f'hall_of_fame.pkl', 'wb') as f:
