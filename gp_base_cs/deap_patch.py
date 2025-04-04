@@ -32,7 +32,8 @@ def pass_through(x):
 """
 import random
 import sys
-from inspect import isclass
+
+from deap.gp import MetaEphemeral
 
 
 def generate(pset, min_, max_, condition, type_=None):
@@ -70,7 +71,7 @@ def generate(pset, min_, max_, condition, type_=None):
                 raise IndexError("The gp.generate function tried to add "
                                  "a terminal of type '%s', but there is "
                                  "none available." % (type_,)).with_traceback(traceback)
-            if isclass(term):
+            if type(term) is MetaEphemeral:
                 term = term()
             expr.append(term)
         else:

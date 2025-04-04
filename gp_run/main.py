@@ -47,12 +47,12 @@ import more_itertools
 # ==========================
 # !!! 非常重要。给deap打补丁
 from gp_base_cs.deap_patch import *  # noqa
-from gp_base_cs.base import print_population, population_to_exprs, filter_exprs, strings_to_sympy
+from gp_base_cs.base import print_population, population_to_exprs, filter_exprs, strings_to_sympy # noqa
 # ==========================
 # TODO 单资产多因子，计算时序IC,使用gp_base_ts
 # TODO 多资产多因子，计算截面IC,使用gp_base_cs
-from gp_base_ts.custom import add_constants, add_operators, add_factors, RET_TYPE
-from gp_base_ts.helper import batched_exprs, fill_fitness
+from gp_base_cs.custom import add_constants, add_operators, add_factors, RET_TYPE
+from gp_base_cs.helper import batched_exprs, fill_fitness
 
 logger.remove()  # 这行很关键，先删除logger自动产生的handler，不然会出现重复输出的问题
 logger.add(sys.stderr, level='INFO')  # 只输出INFO以上的日志
@@ -121,7 +121,6 @@ def map_exprs(evaluate, invalid_ind, gen, label, split_date):
 # ======================================
 # 这里的ret_type只要与addPrimitive对应即可
 pset = gp.PrimitiveSetTyped("MAIN", [], RET_TYPE)
-# pset = gp.PrimitiveSet("MAIN", 1)
 pset = add_constants(pset)
 pset = add_operators(pset)
 pset = add_factors(pset)
@@ -183,14 +182,12 @@ if __name__ == "__main__":
     logger.warning('运行前请检查`fitness_cache.pkl`是否要手工删除。数据集、切分时间发生了变化一定要删除，否则重复的表达式不会参与计算')
 
     # TODO 这演示从从字符串中加载种群，继续优化
-    # OPEN-log(CLOSE)
-    # ts_zscore(LOW, 40)
-    # ts_zscore(log(LOW), 40)
     exprs = """
 OPEN-log(CLOSE)
 ts_zscore(LOW, 40)
 ts_zscore(log(LOW), 40)
-1+OPEN
+OPEN+5
+CLOSE+20
     """
     exprs = [e for e in exprs.splitlines() if e.strip() != ""]
     pop = strings_to_sympy(exprs, globals().copy())

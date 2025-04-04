@@ -207,7 +207,7 @@ def main():
     random.seed(9527)
 
     # TODO: 初始种群大小
-    pop = toolbox.population(n=100)
+    pop = toolbox.population(n=1000)
     # TODO: 名人堂，表示最终选优多少个体
     hof = tools.HallOfFame(1000)
 

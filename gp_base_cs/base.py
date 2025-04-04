@@ -2,7 +2,6 @@ import copy
 from typing import Dict
 
 from expr_codegen.codes import sources_to_exprs
-from expr_codegen.expr import is_meaningless
 from loguru import logger
 from sympy import Basic, Function, symbols, preorder_traversal
 
@@ -17,28 +16,22 @@ def convert_inverse_prim(prim, args):
     prim = copy.copy(prim)
 
     converter = {
-        'aa_sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
-        'aa_div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
-        'aa_mul': lambda *args_: "Mul({},{})".format(*args_),
-        'aa_add': lambda *args_: "Add({},{})".format(*args_),
-        'aa_max': lambda *args_: "max_({},{})".format(*args_),
-        'aa_min': lambda *args_: "min_({},{})".format(*args_),
-
-        'ai_sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
-        'ai_div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
-        'ai_mul': lambda *args_: "Mul({},{})".format(*args_),
-        'ai_add': lambda *args_: "Add({},{})".format(*args_),
-        'ai_max': lambda *args_: "max_({},{})".format(*args_),
-        'ai_min': lambda *args_: "min_({},{})".format(*args_),
-
-        'ia_sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
-        'ia_div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
-        'ia_mul': lambda *args_: "Mul({},{})".format(*args_),
-        'ia_add': lambda *args_: "Add({},{})".format(*args_),
-        'ia_max': lambda *args_: "max_({},{})".format(*args_),
-        'ia_min': lambda *args_: "min_({},{})".format(*args_),
+        'sub': lambda *args_: "Add({}, Mul(-1,{}))".format(*args_),
+        'div': lambda *args_: "Mul({}, Pow({}, -1))".format(*args_),
+        'mul': lambda *args_: "Mul({},{})".format(*args_),
+        'add': lambda *args_: "Add({},{})".format(*args_),
+        'max': lambda *args_: "max_({},{})".format(*args_),
+        'min': lambda *args_: "min_({},{})".format(*args_),
     }
-    prim_formatter = converter.get(prim.name, prim.format)
+    mapping = {}
+    for name in ['add', 'sub', 'mul', 'div', 'max', 'min']:
+        mapping[f'oo_{name}'] = name
+        mapping[f'oi_{name}'] = name
+        mapping[f'io_{name}'] = name
+        mapping[f'of_{name}'] = name
+        mapping[f'fo_{name}'] = name
+
+    prim_formatter = converter.get(mapping.get(prim.name, prim.name), prim.format)
 
     return prim_formatter(*args)
 
@@ -79,34 +72,27 @@ def convert_inverse_sympy(e):
         node_name = get_node_name(node)
 
         if node_name in ('max_', 'min_'):
-            func_name = list(f"aa_{node_name}")[:-1]
-            if node.args[0].is_Number:
-                func_name[0] = 'i'
-            if node.args[1].is_Number:
-                func_name[1] = 'i'
+            func_name = list('oo_' + node_name[:-1])
+            for i in range(2):
+                if node.args[i].is_Integer:
+                    func_name[i] = 'i'
+                if node.args[i].is_Float:
+                    func_name[i] = 'f'
             func = symbols(''.join(func_name), cls=Function)
             replacements.append((node, func(node.args[0], node.args[1])))
 
-        if node_name == 'Add':
+        if node_name in ('Add', 'Mul'):
             last_node = node.args[0]
             for arg2 in node.args[1:]:
-                func_name = list('aa_add')
-                if last_node.is_Number:
+                func_name = list('oo_' + node_name.lower())
+                if last_node.is_Integer:
                     func_name[0] = 'i'
-                if arg2.is_Number:
+                if last_node.is_Float:
+                    func_name[0] = 'f'
+                if arg2.is_Integer:
                     func_name[1] = 'i'
-                func = symbols(''.join(func_name), cls=Function)
-                last_node = func(last_node, arg2)
-            replacements.append((node, last_node))
-
-        if node_name == 'Mul':
-            last_node = node.args[0]
-            for arg2 in node.args[1:]:
-                func_name = list('aa_mul')
-                if last_node.is_Number:
-                    func_name[0] = 'i'
-                if arg2.is_Number:
-                    func_name[1] = 'i'
+                if arg2.is_Float:
+                    func_name[1] = 'f'
                 func = symbols(''.join(func_name), cls=Function)
                 last_node = func(last_node, arg2)
             replacements.append((node, last_node))
@@ -163,6 +149,39 @@ def _invalid_number_type(e, pset, ret_type):
                     return True
             elif issubclass(arg, float):
                 pass
+    return False
+
+
+def is_meaningless(e):
+    if _meaningless__ts_xxx_1(e):
+        return True
+    if _meaningless__xx_xx(e):
+        return True
+    return False
+
+
+def _meaningless__ts_xxx_1(e):
+    """ts_xxx部分函数如果参数为1，可直接丢弃"""
+    for node in preorder_traversal(e):
+        if len(node.args) >= 2:
+            node_name = get_node_name(node)
+            if node_name in ('ts_delay', 'ts_delta'):
+                if not node.args[1].is_Integer:
+                    return True
+            if node_name.startswith('ts_'):
+                if not node.args[-1].is_Number:
+                    return True
+                if node.args[-1] <= 1:
+                    return True
+    return False
+
+
+def _meaningless__xx_xx(e):
+    """部分函数如果两参数完全一样，可直接丢弃"""
+    for node in preorder_traversal(e):
+        if len(node.args) >= 2:
+            if node.args[0] == node.args[1]:
+                return True
     return False
 
 

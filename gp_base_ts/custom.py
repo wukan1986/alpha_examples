@@ -19,37 +19,30 @@ def _random_int_():
     return random.choice([1, 3, 5, 10, 20, 40, 60])
 
 
+def _random_float_():
+    return random.choice([1.0, 2.0, 5.0])
+
+
 def add_constants(pset):
     """添加常量"""
     # !!! 名字一定不能与其它名字重，上次与int一样，结果其它地方报错 [<class 'deap.gp.random_int'>]
     pset.addEphemeralConstant('_random_int_', _random_int_, int)
-
+    pset.addEphemeralConstant('_random_float_', _random_float_, float)
     return pset
 
 
 def add_operators_base(pset):
     """基础算子"""
     # 无法给一个算子定义多种类型，只好定义多个不同名算子，之后通过helper.py中的convert_inverse_prim修正
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_add')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_sub')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_mul')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_div')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_max')
-    pset.addPrimitive(dummy, [Expr, Expr], Expr, name='aa_min')
+    for name in ['add', 'sub', 'mul', 'div']:
+        pset.addPrimitive(dummy, [Expr, Expr], Expr, name=f'oo_{name}')
+        pset.addPrimitive(dummy, [Expr, int], Expr, name=f'oi_{name}')
+        pset.addPrimitive(dummy, [int, Expr], Expr, name=f'io_{name}')
+        pset.addPrimitive(dummy, [Expr, float], Expr, name=f'of_{name}')
+        pset.addPrimitive(dummy, [float, Expr], Expr, name=f'fo_{name}')
 
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_add')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_sub')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_mul')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_div')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_max')
-    pset.addPrimitive(dummy, [Expr, int], Expr, name='ai_min')
-
-    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_add')
-    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_sub')
-    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_mul')
-    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_div')
-    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_max')
-    pset.addPrimitive(dummy, [int, Expr], Expr, name='ia_min')
+    for name in ['max', 'min']:
+        pset.addPrimitive(dummy, [Expr, Expr], Expr, name=f'oo_{name}')
 
     pset.addPrimitive(dummy, [Expr], Expr, name='log')
     pset.addPrimitive(dummy, [Expr], Expr, name='sign')
@@ -81,8 +74,6 @@ def add_operators(pset):
     # TODO 其它的`primitive`，可以从`gp/primitives.py`按需复制过来
     pset.addPrimitive(dummy, [Expr, int], Expr, name='ts_scale')
     pset.addPrimitive(dummy, [Expr, int], Expr, name='ts_zscore')
-
-    # TODO 时序IC时，不要添加`cs_`类算子
 
     return pset
 

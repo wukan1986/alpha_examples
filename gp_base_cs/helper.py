@@ -94,6 +94,9 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
                         replace=False, regroup=True, format=True,
                         date='date', asset='asset')
 
+    # with open('out1.py', 'w') as f:
+    #     f.write(codes)
+
     cnt = len(exprs_dict)
     logger.info("{}代{}批 代码 开始执行。共 {} 条 表达式", gen, batch_id, cnt)
     tic = time.perf_counter()
