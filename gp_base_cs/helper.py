@@ -80,24 +80,24 @@ def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, spl
     return ic_train, ic_valid, ir_train, ir_valid
 
 
-def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
+def batched_exprs(batch_id, exprs_list, gen, label, split_date, df_input):
     """每代种群分批计算
 
     由于种群数大，一次性计算可能内存不足，所以提供分批计算功能，同时也为分布式计算做准备
     """
-    if len(exprs_dict) == 0:
+    if len(exprs_list) == 0:
         return {}
 
     tool = ExprTool()
     # 表达式转脚本
-    codes, G = tool.all(exprs_dict, style='polars_over', template_file='template.py.j2',
+    codes, G = tool.all(exprs_list, style='polars_over', template_file='template.py.j2',
                         replace=False, regroup=True, format=True,
                         date='date', asset='asset')
 
     # with open('out1.py', 'w') as f:
     #     f.write(codes)
 
-    cnt = len(exprs_dict)
+    cnt = len(exprs_list)
     logger.info("{}代{}批 代码 开始执行。共 {} 条 表达式", gen, batch_id, cnt)
     tic = time.perf_counter()
 
@@ -109,12 +109,12 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
     logger.info("{}代{}批 因子 计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", gen, batch_id, elapsed_time, elapsed_time / cnt, cnt / elapsed_time)
 
     # 计算种群适应度
-    ic_train, ic_valid, ir_train, ir_valid = fitness_population(df_output, list(exprs_dict.keys()), label=label, split_date=split_date)
+    ic_train, ic_valid, ir_train, ir_valid = fitness_population(df_output, [k for k, v, c in exprs_list], label=label, split_date=split_date)
     logger.info("{}代{}批 适应度 计算完成", gen, batch_id)
 
     # 样本内外适应度提取
     new_results = {}
-    for k, v in exprs_dict.items():
+    for k, v, c in exprs_list:
         v = str(v)
         new_results[v] = {'ic_train': get_fitness(k, ic_train),
                           'ic_valid': get_fitness(k, ic_valid),
@@ -127,7 +127,7 @@ def batched_exprs(batch_id, exprs_dict, gen, label, split_date, df_input):
 def fill_fitness(exprs_old, fitness_results):
     """填充fitness"""
     results = []
-    for k, v in exprs_old.items():
+    for k, v, c in exprs_old:
         v = str(v)
         d = fitness_results.get(v, None)
         if d is None:

@@ -47,7 +47,7 @@ import more_itertools
 # ==========================
 # !!! 非常重要。给deap打补丁
 from gp_base_cs.deap_patch import *  # noqa
-from gp_base_cs.base import print_population, population_to_exprs, filter_exprs, strings_to_sympy # noqa
+from gp_base_cs.base import print_population, population_to_exprs, filter_exprs, strings_to_sympy  # noqa
 # ==========================
 # TODO 单资产多因子，计算时序IC,使用gp_base_ts
 # TODO 多资产多因子，计算截面IC,使用gp_base_cs
@@ -96,14 +96,14 @@ def map_exprs(evaluate, invalid_ind, gen, label, split_date):
 
     logger.info("表达式转码...")
     # DEAP表达式转sympy表达式。约定以GP_开头，表示遗传编程
-    exprs_dict = population_to_exprs(invalid_ind, globals().copy())
-    exprs_old = exprs_dict.copy()
-    exprs_dict = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
+    exprs_list = population_to_exprs(invalid_ind, globals().copy())
+    exprs_old = exprs_list.copy()
+    exprs_list = filter_exprs(exprs_list, pset, RET_TYPE, fitness_results)
 
-    if len(exprs_dict) > 0:
+    if len(exprs_list) > 0:
         # 单机分批计算，应当优先保证内存可放下，所以用batched，设置最大可支持一次算多少条
-        for batch_id, exprs_batched in enumerate(more_itertools.batched(exprs_dict.items(), BATCH_SIZE)):
-            new_results = batched_exprs(batch_id, dict(exprs_batched), g, label, split_date, df_input)
+        for batch_id, exprs_batched in enumerate(more_itertools.batched(exprs_list, BATCH_SIZE)):
+            new_results = batched_exprs(batch_id, exprs_batched, g, label, split_date, df_input)
 
             # 合并历史与最新的fitness
             fitness_results.update(new_results)
@@ -158,7 +158,7 @@ def main(pop=None):
 
     if pop is None:
         # TODO: 初始种群大小
-        pop = toolbox.population(n=100)
+        pop = toolbox.population(n=1000)
     # TODO: 名人堂，表示最终选优多少个体
     hof = tools.HallOfFame(1000)
 
@@ -189,10 +189,11 @@ ts_zscore(log(LOW), 40)
 OPEN+5
 CLOSE+20
     """
+
     exprs = [e for e in exprs.splitlines() if e.strip() != ""]
     pop = strings_to_sympy(exprs, globals().copy())
     # TODO 由于PrimitiveSetTyped的限制，不是所有的表达式都能正常转换
-    pop = [creator.Individual.from_string(str(v), pset) for k, v in pop.items()]
+    pop = [creator.Individual.from_string(str(v), pset) for k, v, c in pop]
 
     # TODO 这演示从历史的名人堂钟加载种群，继续优化
     try:

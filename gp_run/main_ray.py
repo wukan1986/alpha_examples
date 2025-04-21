@@ -88,7 +88,7 @@ class BatchExprActor:
         # TODO 需要提前将数据复制到不同机器对应的目录，数据需要完全一样
         # 如果对应机器不启用一定要注释
         # '192.168.28.218': r'D:\alpha_examples-main\data\data.parquet',
-        '192.168.28.225': r'D:\GitHub\alpha_examples\data\data.parquet',
+        '127.0.0.1': r'D:\GitHub\alpha_examples\data\data.parquet',
     }
 
     def get_nodes_count(self):
@@ -96,6 +96,8 @@ class BatchExprActor:
 
     def get_path_by_ip(self, ips):
         """IP转数据地址"""
+        # 添加本地IP,方便单机跑多个actor
+        ips = ['127.0.0.1'] + ips
         for ip in reversed(ips):
             path = self.ip_path.get(ip, None)
             if path is not None:
@@ -114,14 +116,15 @@ class BatchExprActor:
         self.df = pl.read_parquet(path)
         return self.df
 
-    def process(self, batch_id, exprs_dict, gen, label, split_date):
+    def process(self, batch_id, exprs_list, gen, label, split_date):
         """批量计算"""
-        return batched_exprs(batch_id, dict(exprs_dict), gen, label, split_date, self.load_data())
+        return batched_exprs(batch_id, exprs_list, gen, label, split_date, self.load_data())
 
 
 # TODO 种群如果非常大，但内存比较小，可以分批计算，每次计算BATCH_SIZE个个体
 BATCH_SIZE = 50
-DIVIDE_SIZE = BatchExprActor.get_nodes_count()
+DIVIDE_SIZE = BatchExprActor.get_nodes_count()  # TODO 每个节点启动1个actor，CPU可能占不满
+DIVIDE_SIZE = 2  # TODO 单机启动2个actor，可能会cpu占满
 # 根据节点数生成对应数量的actor
 pool = ActorPool([BatchExprActor.remote() for i in range(DIVIDE_SIZE)])
 
@@ -145,14 +148,14 @@ def map_exprs(evaluate, invalid_ind, gen, label, split_date):
 
     logger.info("表达式转码...")
     # DEAP表达式转sympy表达式。约定以GP_开头，表示遗传编程
-    exprs_dict = population_to_exprs(invalid_ind, globals().copy())
-    exprs_old = exprs_dict.copy()
-    exprs_dict = filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results)
+    exprs_list = population_to_exprs(invalid_ind, globals().copy())
+    exprs_old = exprs_list.copy()
+    exprs_list = filter_exprs(exprs_list, pset, RET_TYPE, fitness_results)
 
-    if len(exprs_dict) > 0:
+    if len(exprs_list) > 0:
         # 并行计算，木桶效益，最好多台机器能差不多时间算完
-        new_results = pool.map(lambda a, v: a.process.remote(*v, g, label, split_date), enumerate(more_itertools.batched(exprs_dict.items(), BATCH_SIZE)))
-        # new_results = pool.map(lambda a, v: a.process.remote(*v, g, label, split_date), enumerate(more_itertools.divide(DIVIDE_SIZE, exprs_dict.items())))
+        new_results = pool.map(lambda a, v: a.process.remote(*v, g, label, split_date), enumerate(more_itertools.batched(exprs_list, BATCH_SIZE)))
+        # new_results = pool.map(lambda a, v: a.process.remote(*v, g, label, split_date), enumerate(more_itertools.divide(DIVIDE_SIZE, exprs_list)))
 
         for r in new_results:
             # 合并历史与最新的fitness

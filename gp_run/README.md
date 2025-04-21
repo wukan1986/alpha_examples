@@ -67,6 +67,15 @@ pip install -r requirements_node.txt # 分布式。在head和node上都要安装
 `polars`项目最大的特点是支持多线程，所以在一个节点上启动多个`actor`是没有意义的，反而可能拖慢速度。
 所以在`ray start`时设置`num-cpus=1`，并且`@ray.remote(num_cpus=1)`实现一个节点上只跑一个`polars`任务
 
+### 单机上运行分布式版
+
+`main.py`是单机版，但部分用户认为CPU没有完全占满。因为GIL的存在，`polars_ta`中部分函数还是无法摆脱GIL的影响，可以使用多进程来解决。`main_ray.py`是分布式版，也是多进程版。
+
+本机执行`set RAY_ENABLE_WINDOWS_OR_OSX_CLUSTER=1&&ray start --head --num-cpus=2`表示可支持2个actor.
+然后`main_ray.py`中`DIVIDE_SIZE = 2`表示启用两个actor.然后运行`main_ray.py`即可。
+
+注意资源的分配，IO与内存要取舍，并不是actor越多越好。
+
 ### 分布式与单机版区别
 
 都是由一个主程序生成大量表达式，然后进行过滤去重。每一代种群的大量个体分成几批，然后分批计算。

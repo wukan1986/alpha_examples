@@ -191,15 +191,15 @@ def get_fitness(name: str, kv: Dict[str, float]) -> float:
 
 def print_population(population, globals_, more=True):
     """打印种群"""
-    exprs_dict = population_to_exprs(population, globals_)
+    exprs_list = population_to_exprs(population, globals_)
 
     if more:
         # 打印时更好看
-        for (k, v), i in zip(exprs_dict.items(), population):
+        for (k, v, c), i in zip(exprs_list, population):
             print(f'{k}', '\t', i.fitness, '\t', v, '\t<--->\t', i)
     else:
         # 输出到expr_codegen时更方便
-        for (k, v), i in zip(exprs_dict.items(), population):
+        for (k, v, c), i in zip(exprs_list, population):
             print(f'{k}={v}')
 
 
@@ -209,8 +209,8 @@ def population_to_exprs(population, globals_):
         return {}
     sources = [f'GP_{i:04d}={stringify_for_sympy(expr)}' for i, expr in enumerate(population)]
     # sources.insert(0, 'GP_000=1') # DEBUG
-    raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
-    return exprs_dict
+    raw, exprs_list = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
+    return exprs_list
 
 
 def strings_to_sympy(population, globals_):
@@ -218,26 +218,26 @@ def strings_to_sympy(population, globals_):
     if len(population) == 0:
         return {}
     sources = [f'GP_{i:04d}={expr}' for i, expr in enumerate(population)]
-    raw, exprs_dict = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
-    exprs_dict = {k: convert_inverse_sympy(v) for k, v in exprs_dict.items()}
-    return exprs_dict
+    raw, exprs_list = sources_to_exprs(globals_, '\n'.join(sources), convert_xor=False)
+    exprs_list = [(k, convert_inverse_sympy(v), c) for k, v, c in exprs_list]
+    return exprs_list
 
 
-def filter_exprs(exprs_dict, pset, RET_TYPE, fitness_results):
-    before_len = len(exprs_dict)
+def filter_exprs(exprs_list, pset, RET_TYPE, fitness_results):
+    before_len = len(exprs_list)
     # 清理重复表达式，通过字典特性删除
-    exprs_dict = {v: k for k, v in exprs_dict.items()}
-    exprs_dict = {v: k for k, v in exprs_dict.items()}
+    exprs_list = {v: (k, v, c) for k, v, c in exprs_list}
+    exprs_list = [v for k, v in exprs_list.items()]
     # 清理非法表达式
-    exprs_dict = {k: v for k, v in exprs_dict.items() if not is_invalid(v, pset, RET_TYPE)}
+    exprs_list = [(k, v, c) for k, v, c in exprs_list if not is_invalid(v, pset, RET_TYPE)]
     # 清理无意义表达式
-    exprs_dict = {k: v for k, v in exprs_dict.items() if not is_meaningless(v)}
-    after_len = len(exprs_dict)
+    exprs_list = [(k, v, c) for k, v, c in exprs_list if not is_meaningless(v)]
+    after_len = len(exprs_list)
     logger.info('剔除重复、非法、无意义表达式，数量由 {} -> {}', before_len, after_len)
 
     # 历史表达式不再重复计算
-    before_len = len(exprs_dict)
-    exprs_dict = {k: v for k, v in exprs_dict.items() if str(v) not in fitness_results}
-    after_len = len(exprs_dict)
+    before_len = len(exprs_list)
+    exprs_list = [(k, v, c) for k, v, c in exprs_list if str(v) not in fitness_results]
+    after_len = len(exprs_list)
     logger.info('剔除历史已经计算过适应度的表达式，数量由 {} -> {}', before_len, after_len)
-    return exprs_dict
+    return exprs_list
