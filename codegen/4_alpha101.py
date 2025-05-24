@@ -10,18 +10,11 @@ print("pwd:", os.getcwd())
 # ====================
 import polars as pl  # noqa
 import more_itertools
-from expr_codegen.tool import codegen_exec
-
-# 导入OPEN等特征
-from sympy_define import *  # noqa
-import polars as pl  # noqa
+from expr_codegen import codegen_exec
 
 
 def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
-
-    # TODO 由于ts_decay_linear不支持null，暂时用ts_mean代替
-    # from polars_ta.prefix.wq import ts_mean as ts_decay_linear  # noqa
 
     # adv{d} = average daily dollar volume for the past d days
     ADV5 = ts_mean(AMOUNT, 5)
@@ -49,7 +42,7 @@ with open('transformer/alpha101_out.txt', 'r') as f:
 df = pl.read_parquet('data/data.parquet')
 
 # 计算初始一批因子
-df = codegen_exec(df, _code_block_)
+df = codegen_exec(df, _code_block_, over_null="partition_by")
 
 # 所有因子一起计算，占用内存大
 # df = codegen_exec(df, '\n'.join(source1))
@@ -58,7 +51,7 @@ df = codegen_exec(df, _code_block_)
 BATCH_SIZE = 30
 for i, sources in enumerate(more_itertools.batched(source1, BATCH_SIZE)):
     print(f'batch {i}')
-    df = codegen_exec(df, '\n'.join(sources), output_file='1_out.py')
+    df = codegen_exec(df, '\n'.join(sources), output_file='1_out.py', over_null="partition_by")
 
 # print(df.tail())
 # df.write_parquet('alpha101_out.parquet')

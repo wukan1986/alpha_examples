@@ -80,7 +80,7 @@ def _code_block_1():
 if __name__ == '__main__':
     f1 = path_groupby_date(INPUT1_PATH)
     # 过滤日期
-    f1 = f1["2024-01":]
+    f1 = f1["2025-01":]
 
     logger.info("start")
     # 初步计算
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     df = pl.read_parquet("高频价量相关性_temp.parquet")
     # 数据中有nan,后面计算会出错，修正一下
     df = df.fill_nan(None)
-    df = codegen_exec(df, _code_block_1)
+    df = codegen_exec(df, _code_block_1, over_null="partition_by")
 
     # 这里要做一次市值中性化
     print(df.tail())

@@ -80,7 +80,7 @@ def _code_block_1():
 if __name__ == '__main__':
     f1 = path_groupby_date(INPUT1_PATH)
     # 过滤日期
-    f1 = f1["2023-01":]
+    f1 = f1["2024-01":]
 
     logger.info("start")
     # 初步计算
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     logger.info("计算")
     df = pl.read_parquet("买卖压力TWAP_temp.parquet")
     df = df.with_columns(pl.col(_DATE_).dt.truncate("1d"))
-    df = codegen_exec(df, _code_block_1)
+    df = codegen_exec(df, _code_block_1, over_null="partition_by")
     df.write_parquet("买卖压力TWAP.parquet")
     print(df.tail())
 

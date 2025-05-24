@@ -23,11 +23,11 @@ from polars_ta.prefix.cdl import *  # noqa
 DataFrame = TypeVar("DataFrame", _pl_LazyFrame, _pl_DataFrame)
 # ===================================
 
-_ = ["OPEN", "HIGH", "LOW", "CLOSE", "DOJI", "RETURN_CC_1", "RETURN_CO_1", "NEXT_DOJI", "RETURN_OC_1", "RETURN_OO_1", "RETURN_OO_5"]
-[OPEN, HIGH, LOW, CLOSE, DOJI, RETURN_CC_1, RETURN_CO_1, NEXT_DOJI, RETURN_OC_1, RETURN_OO_1, RETURN_OO_5] = [pl.col(i) for i in _]
+_ = ["DOJI", "HIGH", "CLOSE", "OPEN", "LOW"]
+[DOJI, HIGH, CLOSE, OPEN, LOW] = [pl.col(i) for i in _]
 
-_ = ["_x_0", "_x_1", "_x_2", "_x_3", "LABEL_CC_1", "LABEL_CO_1", "LABEL_OC_1", "LABEL_OO_1", "LABEL_OO_5"]
-[_x_0, _x_1, _x_2, _x_3, LABEL_CC_1, LABEL_CO_1, LABEL_OC_1, LABEL_OO_1, LABEL_OO_5] = [pl.col(i) for i in _]
+_ = ["_x_1", "_x_2", "_x_0", "RETURN_CC_1", "_x_3", "RETURN_CO_1", "RETURN_OC_1", "NEXT_DOJI", "RETURN_OO_1", "RETURN_OO_5"]
+[_x_1, _x_2, _x_0, RETURN_CC_1, _x_3, RETURN_CO_1, RETURN_OC_1, NEXT_DOJI, RETURN_OO_1, RETURN_OO_5] = [pl.col(i) for i in _]
 
 _DATE_ = "date"
 _ASSET_ = "asset"
@@ -36,11 +36,8 @@ _TRUE_ = True
 _FALSE_ = False
 
 
-def unpack(x: Expr, idx: int = 0) -> Expr:
+def unpack(x: pl.Expr, idx: int = 0) -> pl.Expr:
     return x.struct[idx]
-
-
-import polars as pl
 
 
 def cs_label(cond, x, q=20):
@@ -53,30 +50,26 @@ def cs_label(cond, x, q=20):
     return if_else(cond, None, cs_qcut(cs_quantile(x, 0.01, 0.99), q))
 
 
+def func_0_ts__asset(df: DataFrame) -> DataFrame:
+    # ========================================
+    df = df.with_columns(
+        _x_1=(ts_delay(CLOSE, -1)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        _x_2=(ts_delay(OPEN, -1)).over(OPEN.is_not_null(), _ASSET_, order_by=_DATE_),
+    )
+    return df
+
+
 def func_0_cl(df: DataFrame) -> DataFrame:
     # ========================================
     df = df.with_columns(
         _x_0=1 / CLOSE,
         DOJI=four_price_doji(OPEN, HIGH, LOW, CLOSE),
     )
-    return df
-
-
-def func_0_ts__asset(df: DataFrame) -> DataFrame:
     # ========================================
     df = df.with_columns(
-        _x_1=(ts_delay(CLOSE, -1)).over(_ASSET_, order_by=_DATE_),
-        _x_2=(ts_delay(OPEN, -1)).over(_ASSET_, order_by=_DATE_),
-    )
-    return df
-
-
-def func_1_cl(df: DataFrame) -> DataFrame:
-    # ========================================
-    df = df.with_columns(
-        RETURN_CC_1=_x_0 * _x_1 - 1,
+        RETURN_CC_1=-_x_0 * (CLOSE - _x_1),
         _x_3=1 / _x_2,
-        RETURN_CO_1=_x_0 * _x_2 - 1,
+        RETURN_CO_1=-_x_0 * (CLOSE - _x_2),
         RETURN_OC_1=-1 + _x_2 / _x_1,
     )
     return df
@@ -85,81 +78,61 @@ def func_1_cl(df: DataFrame) -> DataFrame:
 def func_1_ts__asset(df: DataFrame) -> DataFrame:
     # ========================================
     df = df.with_columns(
-        NEXT_DOJI=(ts_delay(DOJI, -1)).over(_ASSET_, order_by=_DATE_),
+        NEXT_DOJI=(ts_delay(DOJI, -1)).over(DOJI.is_not_null(), _ASSET_, order_by=_DATE_),
     )
     # ========================================
     df = df.with_columns(
-        RETURN_OO_1=(_x_3 * ts_delay(OPEN, -2) - 1).over(_ASSET_, order_by=_DATE_),
-        RETURN_OO_5=(_x_3 * ts_delay(OPEN, -6) - 1).over(_ASSET_, order_by=_DATE_),
-    )
-    return df
-
-
-def func_2_cs__date(df: DataFrame) -> DataFrame:
-    # ========================================
-    df = df.with_columns(
-        LABEL_CC_1=(cs_label(DOJI, RETURN_CC_1, 20)).over(_DATE_),
-        LABEL_CO_1=(cs_label(DOJI, RETURN_CO_1, 20)).over(_DATE_),
-        LABEL_OC_1=(cs_label(NEXT_DOJI, RETURN_OC_1, 20)).over(_DATE_),
-    )
-    # ========================================
-    df = df.with_columns(
-        LABEL_OO_1=(cs_label(NEXT_DOJI, RETURN_OO_1, 20)).over(_DATE_),
-        LABEL_OO_5=(cs_label(NEXT_DOJI, RETURN_OO_5, 20)).over(_DATE_),
+        RETURN_OO_1=(_x_3 * ts_delay(OPEN, -2) - 1).over(pl.all_horizontal(OPEN.is_not_null(), _x_3.is_not_null()), _ASSET_, order_by=_DATE_),
+        RETURN_OO_5=(_x_3 * ts_delay(OPEN, -6) - 1).over(pl.all_horizontal(OPEN.is_not_null(), _x_3.is_not_null()), _ASSET_, order_by=_DATE_),
     )
     return df
 
 
 """
-#========================================func_0_cl
-_x_0 = 1/CLOSE
-DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE)
 #========================================func_0_ts__asset
-_x_1 = ts_delay(CLOSE, -1)
-_x_2 = ts_delay(OPEN, -1)
-#========================================func_1_cl
-RETURN_CC_1 = _x_0*_x_1 - 1
-_x_3 = 1/_x_2
-RETURN_CO_1 = _x_0*_x_2 - 1
-RETURN_OC_1 = -1 + _x_2/_x_1
+_x_1 = ts_delay(CLOSE, -1) #
+_x_2 = ts_delay(OPEN, -1) #
+#========================================func_0_cl
+_x_0 = 1/CLOSE #
+DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE) # noqa
+#========================================func_0_cl
+RETURN_CC_1 = -_x_0*(CLOSE - _x_1) #
+_x_3 = 1/_x_2 #
+RETURN_CO_1 = -_x_0*(CLOSE - _x_2) #
+RETURN_OC_1 = -1 + _x_2/_x_1 #
 #========================================func_1_ts__asset
-NEXT_DOJI = ts_delay(DOJI, -1)
+NEXT_DOJI = ts_delay(DOJI, -1) #
 #========================================func_1_ts__asset
-RETURN_OO_1 = _x_3*ts_delay(OPEN, -2) - 1
-RETURN_OO_5 = _x_3*ts_delay(OPEN, -6) - 1
-#========================================func_2_cs__date
-LABEL_CC_1 = cs_label(DOJI, RETURN_CC_1, 20)
-LABEL_CO_1 = cs_label(DOJI, RETURN_CO_1, 20)
-LABEL_OC_1 = cs_label(NEXT_DOJI, RETURN_OC_1, 20)
-#========================================func_2_cs__date
-LABEL_OO_1 = cs_label(NEXT_DOJI, RETURN_OO_1, 20)
-LABEL_OO_5 = cs_label(NEXT_DOJI, RETURN_OO_5, 20)
+RETURN_OO_1 = _x_3*ts_delay(OPEN, -2) - 1 #
+RETURN_OO_5 = _x_3*ts_delay(OPEN, -6) - 1 #
 """
 
 """
-DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE)
-NEXT_DOJI = ts_delay(DOJI, -1)
-RETURN_CC_1 = -1*1 + ts_delay(CLOSE, -1)/CLOSE
-RETURN_CO_1 = -1*1 + ts_delay(OPEN, -1)/CLOSE
-RETURN_OC_1 = -1*1 + ts_delay(OPEN, -1)/ts_delay(CLOSE, -1)
-RETURN_OO_1 = ts_delay(OPEN, -2)/ts_delay(OPEN, -1) - 1*1
-RETURN_OO_5 = ts_delay(OPEN, -6)/ts_delay(OPEN, -1) - 1*1
-LABEL_CC_1 = cs_label(DOJI, RETURN_CC_1, 20)
-LABEL_CO_1 = cs_label(DOJI, RETURN_CO_1, 20)
-LABEL_OC_1 = cs_label(NEXT_DOJI, RETURN_OC_1, 20)
-LABEL_OO_1 = cs_label(NEXT_DOJI, RETURN_OO_1, 20)
-LABEL_OO_5 = cs_label(NEXT_DOJI, RETURN_OO_5, 20)
+DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE) # noqa
+NEXT_DOJI = ts_delay(DOJI, -1) #
+RETURN_CC_1 = -1*1 + ts_delay(CLOSE, -1)/CLOSE #
+RETURN_CO_1 = -1*1 + ts_delay(OPEN, -1)/CLOSE #
+RETURN_OC_1 = -1*1 + ts_delay(OPEN, -1)/ts_delay(CLOSE, -1) #
+RETURN_OO_1 = ts_delay(OPEN, -2)/ts_delay(OPEN, -1) - 1*1 #
+RETURN_OO_5 = ts_delay(OPEN, -6)/ts_delay(OPEN, -1) - 1*1 #
 """
+
+
+def filter_last(df: DataFrame) -> DataFrame:
+    """过滤数据，只取最后一天。实盘时可用于减少计算量
+    前一个调用的ts,这里可以直接调用，可以认为已经排序好
+        `df = filter_last(df)`
+    反之
+        `df = filter_last(df.sort(_DATE_))`
+    """
+    return df.filter(pl.col(_DATE_) >= df.select(pl.last(_DATE_))[0, 0])
 
 
 def main(df: DataFrame) -> DataFrame:
-    # logger.info("start...")
 
-    df = func_0_cl(df).drop(*[])
     df = func_0_ts__asset(df.sort(_ASSET_, _DATE_)).drop(*[])
-    df = func_1_cl(df).drop(*["_x_0", "_x_2", "_x_1"])
+    df = func_0_cl(df).drop(*["_x_0", "_x_1", "_x_2"])
     df = func_1_ts__asset(df.sort(_ASSET_, _DATE_)).drop(*["_x_3"])
-    df = func_2_cs__date(df.sort(_DATE_)).drop(*[])
 
     # drop intermediate columns
     # df = df.select(pl.exclude(r'^_x_\d+$'))
@@ -167,16 +140,5 @@ def main(df: DataFrame) -> DataFrame:
 
     # shrink
     df = df.select(cs.all().shrink_dtype())
-    # df = df.shrink_to_fit()
-
-    # logger.info('done')
-
-    # save
-    # df.write_parquet('output.parquet')
 
     return df
-
-
-if __name__ in ("__main__", "builtins"):
-    # TODO: 数据加载或外部传入
-    df_output = main(df_input)

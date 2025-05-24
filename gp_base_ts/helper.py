@@ -85,9 +85,9 @@ def batched_exprs(batch_id, exprs_list, gen, label, split_date, df_input):
 
     tool = ExprTool()
     # 表达式转脚本
-    codes, G = tool.all(exprs_list, style='polars_over', template_file='template.py.j2',
+    codes, G = tool.all(exprs_list, style='polars', template_file='template.py.j2',
                         replace=False, regroup=True, format=True,
-                        date='date', asset='asset')
+                        date='date', asset='asset', over_null="partition_by")
 
     cnt = len(exprs_list)
     logger.info("{}代{}批 代码 开始执行。共 {} 条 表达式", gen, batch_id, cnt)

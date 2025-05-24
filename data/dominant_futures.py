@@ -69,12 +69,12 @@ def _code_block_add_sub():
     CLOSE = close + factor
 
 
-df1 = codegen_exec(df1, _code_block_1, output_file=sys.stdout)
+df1 = codegen_exec(df1, _code_block_1, output_file=sys.stdout, over_null="partition_by")
 df3 = df2.join(df1, on=['date', 'asset'], how='left', coalesce=True)
 del df1
 del df2
 # TODO !!! 非常重要，分组是用product而不是asset，否则结果是错的
-df3 = codegen_exec(df3, _code_block_mul_div, asset='product', output_file=sys.stdout)
+df3 = codegen_exec(df3, _code_block_mul_div, asset='product', output_file=sys.stdout, over_null="partition_by")
 print(df3)
 df4 = df3.filter(pl.col('product') == 'ZN')
 print(df4.to_pandas())

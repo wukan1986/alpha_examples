@@ -90,9 +90,9 @@ def batched_exprs(batch_id, exprs_list, gen, label, split_date, df_input):
 
     tool = ExprTool()
     # 表达式转脚本
-    codes, G = tool.all(exprs_list, style='polars_over', template_file='template.py.j2',
+    codes, G = tool.all(exprs_list, style='polars', template_file='template.py.j2',
                         replace=False, regroup=True, format=True,
-                        date='date', asset='asset')
+                        date='date', asset='asset', over_null="partition_by")
 
     # with open('out1.py', 'w') as f:
     #     f.write(codes)

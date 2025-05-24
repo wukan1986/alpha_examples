@@ -28,4 +28,4 @@ def _code_block_():
     SMA_060 = ts_mean(CLOSE, 60)
 
 
-df = codegen_exec(None, _code_block_, output_file='codes/features.py')
+codegen_exec(None, _code_block_, output_file='codes/features.py', over_null="partition_by")

@@ -66,8 +66,8 @@ def func_2files(idx_row):
     df1 = pl.read_parquet(row['path_x']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
     df2 = pl.read_parquet(row['path_y']).rename({"code": _ASSET_, "time": _DATE_, "money": "amount"})
 
-    df1 = codegen_exec(df1.filter(pl.col("paused") == 0), _code_block_1)
-    df2 = codegen_exec(df2.filter(pl.col(_ASSET_) == "000001.XSHG"), _code_block_1)
+    df1 = codegen_exec(df1.filter(pl.col("paused") == 0), _code_block_1, over_null="partition_by")
+    df2 = codegen_exec(df2.filter(pl.col(_ASSET_) == "000001.XSHG"), _code_block_1, over_null="partition_by")
 
     dd = df1.join(df2, on=_DATE_, suffix='_index')
     d1 = get_1_ts__asset(dd)

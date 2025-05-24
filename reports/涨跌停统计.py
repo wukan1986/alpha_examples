@@ -116,7 +116,7 @@ def _code_block_1():
     收益率_CO = OPEN / CLOSE[1] - 1  # 昨天排板入场，今天开盘出场
 
 
-df_stock = codegen_exec(df_stock, _code_block_1)
+df_stock = codegen_exec(df_stock, _code_block_1, over_null="partition_by")
 # 观察本年
 DATE1 = pl.date(2024, 1, 1)
 df_stock = df_stock.filter(pl.col('date') >= DATE1)
@@ -141,10 +141,11 @@ df_stock.group_by('date').agg(
 # 如果涨停指数长期维持在两个点以内，当日涨停数和炸板数维持2比1以内，炸板指数跌幅1.5开外，那定义为弱势
 
 # 观察某几天
-DATE2 = pl.date(2024, 12, 6)
+DATE2 = pl.date(2024, 12, 23)
 df_stock = df_stock.filter(pl.col('date') >= DATE2)
 
-df_stock_board = df_stock.join(df_board, how='left', left_on=['code'], right_on=['代码'])  # .filter(pl.col('board').is_not_null())
+df_stock_board = df_stock.join(df_board, how='left', left_on=['code'],
+                               right_on=['代码'])  # .filter(pl.col('board').is_not_null())
 del df_stock
 del df_board
 

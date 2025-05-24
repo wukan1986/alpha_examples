@@ -9,10 +9,7 @@ sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
 
-from expr_codegen.tool import codegen_exec
-
-# 导入OPEN等特征
-from sympy_define import *  # noqa
+from expr_codegen import codegen_exec
 
 
 def _code_block_():
@@ -73,14 +70,19 @@ for i in (5, 10, 20, 30, 60):
     source2.append(f'CNTP{i} = ts_mean(CLOSE > ts_delay(CLOSE, 1), {i})')
     source2.append(f'CNTN{i} = ts_mean(CLOSE < ts_delay(CLOSE, 1), {i})')
     source2.append(f'CNTD{i} = CNTP{i}-CNTN{i}')
-    source2.append(f'SUMP{i} = ts_sum(max_(CLOSE - ts_delay(CLOSE, 1), 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)')
-    source2.append(f'SUMN{i} = ts_sum(max_(ts_delay(CLOSE, 1) - CLOSE, 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)')
+    source2.append(
+        f'SUMP{i} = ts_sum(max_(CLOSE - ts_delay(CLOSE, 1), 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)')
+    source2.append(
+        f'SUMN{i} = ts_sum(max_(ts_delay(CLOSE, 1) - CLOSE, 0), {i}) / (ts_sum(abs_(CLOSE - ts_delay(CLOSE, 1)), {i}) + 1e-12)')
     source2.append(f'SUMD{i} = SUMP{i}-SUMN{i}')
     source2.append(f'VMA{i} = ts_mean(VOLUME, {i}) / (VOLUME + 1e-12)')
     source2.append(f'VSTD{i} = ts_std_dev(VOLUME, {i}) / (VOLUME + 1e-12)')
-    source2.append(f'WVMA{i} = ts_std_dev(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) / (ts_mean(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) + 1e-12)')
-    source2.append(f'VSUMP{i} = ts_sum(max_(VOLUME - ts_delay(VOLUME, 1), 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)')
-    source2.append(f'VSUMN{i} = ts_sum(max_(ts_delay(VOLUME, 1) - VOLUME, 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)')
+    source2.append(
+        f'WVMA{i} = ts_std_dev(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) / (ts_mean(abs_(ts_returns(CLOSE, 1)) * VOLUME, {i}) + 1e-12)')
+    source2.append(
+        f'VSUMP{i} = ts_sum(max_(VOLUME - ts_delay(VOLUME, 1), 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)')
+    source2.append(
+        f'VSUMN{i} = ts_sum(max_(ts_delay(VOLUME, 1) - VOLUME, 0), {i}) / (ts_sum(abs_(VOLUME - ts_delay(VOLUME, 1)), {i}) + 1e-12)')
     source2.append(f'VSUMD{i} = VSUMP{i}-VSUMN{i}')
 
-df = codegen_exec(None, _code_block_, '\n'.join(source2), output_file='codes/alpha158.py')
+codegen_exec(None, _code_block_, '\n'.join(source2), output_file='codes/alpha158.py', over_null="partition_by")

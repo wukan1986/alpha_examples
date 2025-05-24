@@ -26,8 +26,8 @@ DataFrame = TypeVar("DataFrame", _pl_LazyFrame, _pl_DataFrame)
 _ = ["CLOSE"]
 [CLOSE] = [pl.col(i) for i in _]
 
-_ = ["_x_0", "ROCP_020", "ROCP_040", "ROCP_060", "SMA_020", "SMA_040", "SMA_060", "VR_020", "VR_040", "VR_060"]
-[_x_0, ROCP_020, ROCP_040, ROCP_060, SMA_020, SMA_040, SMA_060, VR_020, VR_040, VR_060] = [pl.col(i) for i in _]
+_ = ["_x_0", "ROCP_020", "SMA_020", "ROCP_040", "SMA_040", "ROCP_060", "SMA_060", "VR_020", "VR_040", "VR_060"]
+[_x_0, ROCP_020, SMA_020, ROCP_040, SMA_040, ROCP_060, SMA_060, VR_020, VR_040, VR_060] = [pl.col(i) for i in _]
 
 _DATE_ = "date"
 _ASSET_ = "asset"
@@ -36,7 +36,7 @@ _TRUE_ = True
 _FALSE_ = False
 
 
-def unpack(x: Expr, idx: int = 0) -> Expr:
+def unpack(x: pl.Expr, idx: int = 0) -> pl.Expr:
     return x.struct[idx]
 
 
@@ -46,53 +46,62 @@ CS_SW_L1 = r"^sw_l1_\d+$"
 def func_0_ts__asset(df: DataFrame) -> DataFrame:
     # ========================================
     df = df.with_columns(
-        _x_0=(ts_log_diff(CLOSE, 1)).over(_ASSET_, order_by=_DATE_),
-        ROCP_020=(ts_returns(CLOSE, 20)).over(_ASSET_, order_by=_DATE_),
-        ROCP_040=(ts_returns(CLOSE, 40)).over(_ASSET_, order_by=_DATE_),
-        ROCP_060=(ts_returns(CLOSE, 60)).over(_ASSET_, order_by=_DATE_),
-        SMA_020=(ts_mean(CLOSE, 20)).over(_ASSET_, order_by=_DATE_),
-        SMA_040=(ts_mean(CLOSE, 40)).over(_ASSET_, order_by=_DATE_),
-        SMA_060=(ts_mean(CLOSE, 60)).over(_ASSET_, order_by=_DATE_),
+        _x_0=(ts_log_diff(CLOSE, 1)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        ROCP_020=(ts_returns(CLOSE, 20)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        SMA_020=(ts_mean(CLOSE, 20)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        ROCP_040=(ts_returns(CLOSE, 40)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        SMA_040=(ts_mean(CLOSE, 40)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        ROCP_060=(ts_returns(CLOSE, 60)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
+        SMA_060=(ts_mean(CLOSE, 60)).over(CLOSE.is_not_null(), _ASSET_, order_by=_DATE_),
     )
     # ========================================
     df = df.with_columns(
-        VR_020=(ts_std_dev(_x_0, 20)).over(_ASSET_, order_by=_DATE_),
-        VR_040=(ts_std_dev(_x_0, 40)).over(_ASSET_, order_by=_DATE_),
-        VR_060=(ts_std_dev(_x_0, 60)).over(_ASSET_, order_by=_DATE_),
+        VR_020=(ts_std_dev(_x_0, 20)).over(_x_0.is_not_null(), _ASSET_, order_by=_DATE_),
+        VR_040=(ts_std_dev(_x_0, 40)).over(_x_0.is_not_null(), _ASSET_, order_by=_DATE_),
+        VR_060=(ts_std_dev(_x_0, 60)).over(_x_0.is_not_null(), _ASSET_, order_by=_DATE_),
     )
     return df
 
 
 """
 #========================================func_0_ts__asset
-_x_0 = ts_log_diff(CLOSE, 1)
-ROCP_020 = ts_returns(CLOSE, 20)
-ROCP_040 = ts_returns(CLOSE, 40)
-ROCP_060 = ts_returns(CLOSE, 60)
-SMA_020 = ts_mean(CLOSE, 20)
-SMA_040 = ts_mean(CLOSE, 40)
-SMA_060 = ts_mean(CLOSE, 60)
+_x_0 = ts_log_diff(CLOSE, 1) #
+ROCP_020 = ts_returns(CLOSE, 20) #
+SMA_020 = ts_mean(CLOSE, 20) #
+ROCP_040 = ts_returns(CLOSE, 40) #
+SMA_040 = ts_mean(CLOSE, 40) #
+ROCP_060 = ts_returns(CLOSE, 60) #
+SMA_060 = ts_mean(CLOSE, 60) #
 #========================================func_0_ts__asset
-VR_020 = ts_std_dev(_x_0, 20)
-VR_040 = ts_std_dev(_x_0, 40)
-VR_060 = ts_std_dev(_x_0, 60)
+VR_020 = ts_std_dev(_x_0, 20) #
+VR_040 = ts_std_dev(_x_0, 40) #
+VR_060 = ts_std_dev(_x_0, 60) #
 """
 
 """
-ROCP_020 = ts_returns(CLOSE, 20)
-ROCP_040 = ts_returns(CLOSE, 40)
-ROCP_060 = ts_returns(CLOSE, 60)
-VR_020 = ts_std_dev(ts_log_diff(CLOSE, 1), 20)
-VR_040 = ts_std_dev(ts_log_diff(CLOSE, 1), 40)
-VR_060 = ts_std_dev(ts_log_diff(CLOSE, 1), 60)
-SMA_020 = ts_mean(CLOSE, 20)
-SMA_040 = ts_mean(CLOSE, 40)
-SMA_060 = ts_mean(CLOSE, 60)
+ROCP_020 = ts_returns(CLOSE, 20) #
+ROCP_040 = ts_returns(CLOSE, 40) #
+ROCP_060 = ts_returns(CLOSE, 60) #
+VR_020 = ts_std_dev(ts_log_diff(CLOSE, 1), 20) #
+VR_040 = ts_std_dev(ts_log_diff(CLOSE, 1), 40) #
+VR_060 = ts_std_dev(ts_log_diff(CLOSE, 1), 60) #
+SMA_020 = ts_mean(CLOSE, 20) #
+SMA_040 = ts_mean(CLOSE, 40) #
+SMA_060 = ts_mean(CLOSE, 60) #
 """
+
+
+def filter_last(df: DataFrame) -> DataFrame:
+    """过滤数据，只取最后一天。实盘时可用于减少计算量
+    前一个调用的ts,这里可以直接调用，可以认为已经排序好
+        `df = filter_last(df)`
+    反之
+        `df = filter_last(df.sort(_DATE_))`
+    """
+    return df.filter(pl.col(_DATE_) >= df.select(pl.last(_DATE_))[0, 0])
 
 
 def main(df: DataFrame) -> DataFrame:
-    # logger.info("start...")
 
     df = func_0_ts__asset(df.sort(_ASSET_, _DATE_)).drop(*["_x_0"])
 
@@ -102,16 +111,5 @@ def main(df: DataFrame) -> DataFrame:
 
     # shrink
     df = df.select(cs.all().shrink_dtype())
-    # df = df.shrink_to_fit()
-
-    # logger.info('done')
-
-    # save
-    # df.write_parquet('output.parquet')
 
     return df
-
-
-if __name__ in ("__main__", "builtins"):
-    # TODO: 数据加载或外部传入
-    df_output = main(df_input)

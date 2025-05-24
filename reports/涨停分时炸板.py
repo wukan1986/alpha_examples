@@ -12,7 +12,7 @@ def _code_block_0():
     换手率 = volume / (circulating_cap * 10000)  # 流通股本单位为万
 
 
-df_1d = codegen_exec(df_1d, _code_block_0, output_file="2_out.py")
+df_1d = codegen_exec(df_1d, _code_block_0, output_file="2_out.py", over_null="partition_by")
 
 # 加载分钟数据
 df_1m = (pl.read_parquet(r"D:\data\jqresearch\get_price_stock_minute\20241*.parquet").filter(pl.col("paused") == 0)
@@ -42,7 +42,7 @@ def _code_block_1():
 
 
 df = df.with_columns(_asset_date=pl.struct("asset", "date"))
-df = codegen_exec(df, _code_block_1, asset="_asset_date", output_file="1_out.py")
+df = codegen_exec(df, _code_block_1, asset="_asset_date", output_file="1_out.py", over_null="partition_by")
 print(df.tail().to_pandas())
 
 df = df.group_by("asset", "date").agg(

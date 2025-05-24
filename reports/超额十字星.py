@@ -92,7 +92,7 @@ if __name__ == '__main__':
     f2 = path_groupby_date(INPUT2_PATH)
     ff = pd.merge(f1, f2, left_index=True, right_index=True, how='left')
     # 过滤日期
-    ff = ff["2024-01":]
+    ff = ff["2025-01":]
 
     logger.info("start")
 

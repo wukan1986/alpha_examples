@@ -28,11 +28,10 @@ def cs_label(cond, x, q=20):
 
 def _code_block_():
     # 因子编辑区，可利用IDE的智能提示在此区域编辑因子
-    import polars as pl  # noqa
 
     # 这里用未复权的价格更合适
     # 今日涨停或跌停
-    DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE)
+    DOJI = four_price_doji(OPEN, HIGH, LOW, CLOSE)  # noqa
     # 明日涨停或跌停
     NEXT_DOJI = DOJI[-1]
 
@@ -43,15 +42,9 @@ def _code_block_():
     RETURN_OO_1 = OPEN[-2] / OPEN[-1] - 1
     RETURN_OO_5 = OPEN[-6] / OPEN[-1] - 1
 
-    # 标签
-    LABEL_CC_1 = cs_label(DOJI, RETURN_CC_1, 20)
-    LABEL_CO_1 = cs_label(DOJI, RETURN_CO_1, 20)
-    LABEL_OC_1 = cs_label(NEXT_DOJI, RETURN_OC_1, 20)
-    LABEL_OO_1 = cs_label(NEXT_DOJI, RETURN_OO_1, 20)
-    LABEL_OO_5 = cs_label(NEXT_DOJI, RETURN_OO_5, 20)
 
-
-df = codegen_exec(None,
-                  _code_block_,
-                  extra_codes=inspect.getsource(cs_label),
-                  output_file='codes/labels.py')
+codegen_exec(None,
+             _code_block_,
+             extra_codes=inspect.getsource(cs_label),
+             output_file='codes/labels.py',
+             over_null="partition_by")

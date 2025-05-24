@@ -100,7 +100,7 @@ if __name__ == '__main__':
     df = pl.read_parquet("买卖压力_temp.parquet")
     df = df.with_columns(pl.col(_DATE_).dt.truncate("1d"))
 
-    df = codegen_exec(df, _code_block_1)
+    df = codegen_exec(df, _code_block_1, over_null="partition_by")
     df.write_parquet("买卖压力.parquet")
     print(df.tail())
 
