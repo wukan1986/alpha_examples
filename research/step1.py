@@ -1,3 +1,6 @@
+"""
+计算预期收益率，注意：全是未来数据
+"""
 import os
 import sys
 from pathlib import Path
@@ -52,36 +55,16 @@ if __name__ == '__main__':
     # 由于读写多，推荐放到内存盘，加快速度
     INPUT_PATH = r'M:\preprocessing\data2.parquet'
     # 去除停牌后的基础数据
-    OUTPUT_PATH = r'M:\preprocessing\delete2.parquet'
+    OUTPUT_PATH = r'M:\preprocessing\data3.parquet'
 
     logger.info('数据准备, {}', INPUT_PATH)
     df = pl.read_parquet(INPUT_PATH)
     print(df.columns)
 
-    df = df.with_columns([
-        # 添加常数列，回归等场景用得上
-        pl.lit(1, dtype=pl.Float32).alias('ONE'),
-        # 成交均价，未复权
-        (pl.col('amount') / pl.col('volume')).alias('vwap'),
-        # 成交额与成交量对数处理
-        pl.col('amount').log1p().alias('LOG_AMOUNT'),
-        pl.col('volume').log1p().alias('LOG_VOLUME'),
-        pl.col('market_cap').log1p().alias('LOG_MC'),
-        pl.col('circulating_market_cap').log1p().alias('LOG_FC'),
-    ])
-
-    # 后复权
-    df = df.with_columns([
-        (pl.col(['open', 'high', 'low', 'close', 'vwap']) * pl.col('factor')).name.map(lambda x: x.upper()),
-    ]).fill_nan(None)  # nan填充成null
-
     logger.info('数据准备完成')
     # =====================================
 
     df = codegen_exec(df, _code_block_2, over_null="partition_by")
-
-    # 计算出来的结果需要进行部分修复，防止之后计算时出错
-    df = df.with_columns(pl.col('NEXT_DOJI4').fill_null(False))
 
     # 将计算结果中的inf都换成null
     df = df.with_columns(purify(cs.numeric()))

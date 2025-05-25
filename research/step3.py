@@ -5,6 +5,9 @@ import os
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 # 修改当前目录到上层目录，方便跨不同IDE中使用
 pwd = str(Path(__file__).parents[1])
 os.chdir(pwd)
@@ -43,7 +46,8 @@ def func(kv):
     # 收益信息
     df1 = pl.read_parquet(INPUT1_PATH, columns=['date', 'asset', fwd_ret_1], use_pyarrow=True)
     # 只记录特征，收益不全
-    df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI', forward_return] + factors, use_pyarrow=True)
+    df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI', forward_return] + factors,
+                          use_pyarrow=True)
 
     # !!! 提前排序，否则计算时会很慢
     df2 = df2.sort('date', 'asset')
