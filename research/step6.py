@@ -75,11 +75,6 @@ bt = LightBT(init_cash=10000 * 100,  # 初始资金
 with Timer():
     bt.setup(config)
 
-
-def get_dtype(dtype):
-    return {a: b for a, b in dtype.descr}
-
-
 # %% 资产转换，只做一次即可
 df['asset'] = df['asset'].map(bt.mapping_asset_int)
 bt.run_bars(groupby(orders_daily(df, sort=True), by='date', dtype=order_outside_dt))
