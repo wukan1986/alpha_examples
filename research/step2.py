@@ -19,9 +19,8 @@ from pathlib import Path
 from alphainspect.reports import create_1x3_sheet  # noqa
 from alphainspect.utils import with_factor_quantile, with_factor_top_k  # noqa
 from matplotlib import pyplot as plt
+from polars_ta.utils.withs import with_industry
 from polars_ta.wq import purify
-
-from research.utils import with_industry
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
 pwd = str(Path(__file__).parents[1])
@@ -51,17 +50,24 @@ def _code_block_2():
 
 def _code_block_3():
     # TODO 打标签应当在票池中打，还是在全A中打？
-    LABEL_OO_02 = cs_mad_zscore(RETURN_OO_02)
-    LABEL_OO_05 = cs_mad_zscore(RETURN_OO_05)
-    LABEL_OO_10 = cs_mad_zscore(RETURN_OO_10)
+    LABEL_OO_02 = cs_mad(RETURN_OO_02, 5)
+    LABEL_OO_05 = cs_mad(RETURN_OO_05, 5)
+    LABEL_OO_10 = cs_mad(RETURN_OO_10, 5)
 
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
-    # 对数市值
-    LOG_MC = log1p(market_cap)
-    # 对数市值。去极值、标准化。其他因子市值中性化时使用
-    LOG_MC_ZS = cs_mad_zscore(LOG_MC)
+    ONE = 1
+    # 对数市值。去极值
+    MC_LOG = cs_quantile(log1p(market_cap), 0.01, 0.99)
+    # 对数市值。标准化。供其他因子市值中性化时使用
+    MC_NORM = cs_zscore(MC_LOG)
     # 对数市值。行业中性化。直接作为因子使用
-    LOG_MC_NEUT = cs_resid(LOG_MC_ZS, CS_SW_L1, ONE)
+    MC_NEUT = cs_zscore(cs_resid(MC_NORM, CS_SW_L1, ONE))
+
+    # 1 / pe_ratio和1 / pb_ratio需要处理负数吗？
+    EP = cs_mad_zscore_resid_zscore(1 / pe_ratio, MC_NORM, CS_SW_L1, ONE)
+    BP = cs_mad_zscore_resid_zscore(1 / pb_ratio, MC_NORM, CS_SW_L1, ONE)
+    SP = cs_mad_zscore_resid_zscore(1 / ps_ratio, MC_NORM, CS_SW_L1, ONE)
+    CFP = cs_mad_zscore_resid_zscore(1 / pcf_ratio, MC_NORM, CS_SW_L1, ONE)
 
 
 if __name__ == '__main__':
@@ -76,7 +82,7 @@ if __name__ == '__main__':
     print(df.columns)
     #
     # 添加申万一级行业
-    df = with_industry(df, 'sw_l1', drop_first=True)
+    df = with_industry(df, 'sw_l1', drop_first=True, keep_col=True)
     logger.info('数据准备完成')
 
     # =====================================
@@ -99,8 +105,8 @@ if __name__ == '__main__':
     df.write_parquet(OUTPUT_PATH)
     logger.info('特征保存完成, {}', OUTPUT_PATH)
 
-    factor = 'LOG_MC_NEUT'
-    fwd_ret_1 = 'RETURN_OO_02'
+    factor = 'EP'
+    fwd_ret_1 = 'LABEL_OO_02'
     axvlines = ('2024-01-01',)
     quantiles = 5
 

@@ -19,7 +19,7 @@ INPUT1_PATH = r'M:\preprocessing\data2.parquet'
 # 特征数据文件
 INPUT2_PATH = r'M:\preprocessing\data4.parquet'
 
-FACTOR = 'LOG_MC_NEUT'
+FACTOR = 'MC_NEUT'
 # 行情信息，只跳过了停牌，其它都不能跳过，否则计算收益会出错
 df1 = pl.read_parquet(INPUT1_PATH, columns=['date', 'asset', 'OPEN', 'CLOSE'])
 # 特征。由于过滤了票池以及其它条件，所以数据长度相对短
@@ -38,7 +38,7 @@ del df2
 
 
 def __code_block_1():
-    FACTOR = ts_delay(LOG_MC_NEUT, 1)
+    FACTOR = ts_delay(MC_NEUT, 1)
 
 
 df = codegen_exec(df, __code_block_1, over_null="partition_by")

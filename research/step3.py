@@ -29,12 +29,13 @@ output = Path(r'M:\preprocessing\output')
 
 def func(kv):
     name, factors = kv
-    fwd_ret_1 = 'RETURN_OO_05'
+    fwd_ret_1 = 'RETURN_OO_02'
+    label = 'LABEL_OO_02'
 
     # 收益信息
     df1 = pl.read_parquet(INPUT1_PATH, columns=['date', 'asset', fwd_ret_1])
     # 只记录特征，收益不全
-    df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI4'] + factors)
+    df2 = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI4', label] + factors)
 
     # !!! 提前排序，否则计算时会很慢
     df1 = df1.sort('date', 'asset')
@@ -49,7 +50,7 @@ def func(kv):
     df = df.sort('date', 'asset')
 
     report_html(name, factors, df, output,
-                fwd_ret_1=fwd_ret_1, quantiles=0, top_k=0, axvlines=('2020-01-01', '2024-01-01',))
+                fwd_ret_1=label, quantiles=0, top_k=0, axvlines=('2020-01-01', '2024-01-01',))
 
     return 0
 
@@ -57,7 +58,7 @@ def func(kv):
 if __name__ == '__main__':
     # 1去极值标准化/2市值中性化/3行业中性化/4行业市值中性化
     factors2 = {
-        "1_线性正向": ['LOG_MC', 'LOG_MC_ZS', 'LOG_MC_NEUT'],
+        "1_线性正向": ['MC_LOG', 'MC_NORM', 'MC_NEUT'],
     }
     t0 = time.perf_counter()
     logger.info('开始')
