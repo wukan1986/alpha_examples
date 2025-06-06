@@ -46,6 +46,9 @@ def _code_block_2():
     RETURN_OO_05 = _OO_05 ** (1 / 5) - 1
     RETURN_OO_10 = _OO_10 ** (1 / 10) - 1
 
+    # 第一天尾盘集合竞价入场卖出，第二天开盘出场买入。做空策略。
+    RETURN_SHORT = 1 - OPEN[-1] / CLOSE
+
 
 # =======================================
 # %% 生成因子
@@ -53,12 +56,12 @@ def _code_block_2():
 
 if __name__ == '__main__':
     # 由于读写多，推荐放到内存盘，加快速度
-    INPUT_PATH = r'M:\preprocessing\data2.parquet'
+    INPUT1_PATH = r'M:\preprocessing\data2.parquet'
     # 去除停牌后的基础数据
     OUTPUT_PATH = r'M:\preprocessing\data3.parquet'
 
-    logger.info('数据准备, {}', INPUT_PATH)
-    df = pl.read_parquet(INPUT_PATH)
+    logger.info('数据准备, {}', INPUT1_PATH)
+    df = pl.read_parquet(INPUT1_PATH)
     print(df.columns)
 
     logger.info('数据准备完成')

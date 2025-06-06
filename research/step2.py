@@ -19,8 +19,8 @@ from pathlib import Path
 from alphainspect.reports import create_1x3_sheet  # noqa
 from alphainspect.utils import with_factor_quantile, with_factor_top_k  # noqa
 from matplotlib import pyplot as plt
+from polars_ta.prefix.wq import *
 from polars_ta.utils.withs import with_industry
-from polars_ta.wq import purify
 
 # 修改当前目录到上层目录，方便跨不同IDE中使用
 pwd = str(Path(__file__).parents[1])
@@ -38,6 +38,8 @@ from loguru import logger
 def _code_block_1():
     # 时序类特征，一定要提前算，防止被is_st等过滤掉
     ONE = 1
+    _OO_02 = OPEN[-3] / OPEN[-1]
+    RETURN_OO_02 = _OO_02 ** (1 / 2) - 1
 
 
 def _code_block_2():
@@ -50,29 +52,33 @@ def _code_block_2():
 
 def _code_block_3():
     # TODO 打标签应当在票池中打，还是在全A中打？
-    LABEL_OO_02 = cs_mad(RETURN_OO_02, 5)
-    LABEL_OO_05 = cs_mad(RETURN_OO_05, 5)
-    LABEL_OO_10 = cs_mad(RETURN_OO_10, 5)
+    LABEL_OO_02 = cs_quantile(RETURN_OO_02, 0.01, 0.99)
 
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
-    ONE = 1
     # 对数市值。去极值
     MC_LOG = cs_quantile(log1p(market_cap), 0.01, 0.99)
     # 对数市值。标准化。供其他因子市值中性化时使用
     MC_NORM = cs_zscore(MC_LOG)
     # 对数市值。行业中性化。直接作为因子使用
-    MC_NEUT = cs_zscore(cs_resid(MC_NORM, CS_SW_L1, ONE))
+    MC_NEUT = cs_resid_zscore(MC_NORM, CS_SW_L1, ONE)
 
-    # 1 / pe_ratio和1 / pb_ratio需要处理负数吗？
+    # 1 / pe_ratio和1 / pb_ratio需要处理负数吗？ cs_quantile_zscore cs_mad_zscore
     EP = cs_mad_zscore_resid_zscore(1 / pe_ratio, MC_NORM, CS_SW_L1, ONE)
     BP = cs_mad_zscore_resid_zscore(1 / pb_ratio, MC_NORM, CS_SW_L1, ONE)
     SP = cs_mad_zscore_resid_zscore(1 / ps_ratio, MC_NORM, CS_SW_L1, ONE)
     CFP = cs_mad_zscore_resid_zscore(1 / pcf_ratio, MC_NORM, CS_SW_L1, ONE)
 
+    factor = ts_corr(turnover_ratio, ts_delay(CLOSE, 1), 20)
+
+    POS_QTL = cs_quantile_zscore(factor)
+    POS_MAD = cs_mad_zscore(factor)
+    NEG_QTL = -cs_quantile_zscore(factor)
+    NEG_MAD = -cs_mad_zscore(factor)
+
 
 if __name__ == '__main__':
     # 去除停牌后的基础数据
-    INPUT1_PATH = r'M:\preprocessing\data3.parquet'
+    INPUT1_PATH = r'M:\preprocessing\data2.parquet'
 
     # 添加新特证，有可能因过滤问题，某些股票在票池中反复剔除和纳入
     OUTPUT_PATH = r'M:\preprocessing\data4.parquet'
@@ -105,10 +111,13 @@ if __name__ == '__main__':
     df.write_parquet(OUTPUT_PATH)
     logger.info('特征保存完成, {}', OUTPUT_PATH)
 
-    factor = 'EP'
+    # TODO 不显示图表，不需要可以注释
+    sys.exit()
+
+    factor = 'factor'
     fwd_ret_1 = 'LABEL_OO_02'
     axvlines = ('2024-01-01',)
-    quantiles = 5
+    quantiles = 9
 
     df = with_factor_quantile(df, factor, quantiles=quantiles, factor_quantile=f'_fq_{factor}')
     # df = with_factor_top_k(df, factor, top_k=10, factor_quantile=f'_fq_{factor}')
