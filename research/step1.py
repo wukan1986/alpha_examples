@@ -36,18 +36,15 @@ def _code_block_2():
     RETURN_CO_01 = _CO_01 - 1
     RETURN_OO_01 = _OO_01 - 1
 
-    # 算术平均
-    RETURN_OO_02 = (_OO_02 - 1) / 2
-    RETURN_OO_05 = (_OO_05 - 1) / 5
-    RETURN_OO_10 = (_OO_10 - 1) / 10
-
-    # 几何平均
+    # 日化简单收益率，几何平均
     RETURN_OO_02 = _OO_02 ** (1 / 2) - 1
     RETURN_OO_05 = _OO_05 ** (1 / 5) - 1
     RETURN_OO_10 = _OO_10 ** (1 / 10) - 1
 
     # 第一天尾盘集合竞价入场卖出，第二天开盘出场买入。做空策略。
-    RETURN_SHORT = 1 - OPEN[-1] / CLOSE
+    RETURN_CO_01_SHORT = (2 - _CO_01) ** (1 / 1) - 1
+    # 十天做客策略日化
+    RETURN_OO_10_SHORT = (2 - _OO_10) ** (1 / 10) - 1
 
 
 # =======================================
