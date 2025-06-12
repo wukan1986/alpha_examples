@@ -11,8 +11,8 @@ os.chdir(pwd)
 sys.path.append(pwd)
 print("pwd:", os.getcwd())
 # ====================
-import multiprocessing
 import time
+from multiprocessing import get_context
 
 import polars as pl
 from alphainspect.reports import report_html
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     logger.info('开始')
     # 没必要设置太大，因为部分计算使用的polars多线程，会将CPU跑满
     # 参考CPU与内存，可以考虑在这填写合适的值，如：4、8
-    with multiprocessing.Pool(2) as pool:
+    with get_context("spawn").Pool(2) as pool:
         print(list(pool.map(func, factors2.items())))
     logger.info('结束')
     logger.info(f'耗时：{time.perf_counter() - t0:.2f}s')
