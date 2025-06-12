@@ -32,11 +32,10 @@ logger.add(sys.stderr,
 
 def func(kv):
     name, factors = kv
-    fwd_ret_1 = 'RETURN_OO_02'
-    label = 'LABEL_OO_02'
+    fwd_ret_1 = 'FWD_RET'
 
     # 只记录特征，收益不全
-    df = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI4', label, fwd_ret_1] + factors)
+    df = pl.read_parquet(INPUT2_PATH, columns=['date', 'asset', 'NEXT_DOJI4', fwd_ret_1] + factors)
 
     for factor in factors:
         df = with_factor_quantile(df, factor, quantiles=9, factor_quantile=f'_fq_{factor}')
@@ -50,7 +49,7 @@ def func(kv):
 if __name__ == '__main__':
     # 1去极值标准化/2市值中性化/3行业中性化/4行业市值中性化
     factors2 = {
-        # "1_市值": ['MC_LOG', 'MC_NORM', 'MC_NEUT'],
+        "1_市值": ['MC_LOG', 'MC_NORM', 'MC_NEUT'],
         "2_因子": ['POS_QTL', 'POS_MAD', 'NEG_QTL', 'NEG_MAD'],
     }
     t0 = time.perf_counter()

@@ -38,8 +38,8 @@ from loguru import logger
 def _code_block_1():
     # 时序类特征，一定要提前算，防止被is_st等过滤掉
     ONE = 1
-    _OO_02 = OPEN[-3] / OPEN[-1]
-    RETURN_OO_02 = _OO_02 ** (1 / 2) - 1
+    # 日化预期收益率
+    FWD_RET = (OPEN[-3] / OPEN[-1]) ** (1 / 2) - 1
 
 
 def _code_block_2():
@@ -52,14 +52,14 @@ def _code_block_2():
 
 def _code_block_3():
     # TODO 打标签应当在票池中打，还是在全A中打？
-    LABEL_OO_02 = cs_quantile(RETURN_OO_02, 0.01, 0.99)
+    LABEL = cs_quantile(FWD_RET, 0.01, 0.99)
 
     # TODO 本人尝试的指标处理方法，不知是否合适，欢迎指点
-    # 对数市值。去极值
-    MC_LOG = cs_quantile(log1p(market_cap), 0.01, 0.99)
-    # 对数市值。标准化。供其他因子市值中性化时使用
+    # 对数流通市值。去极值
+    MC_LOG = cs_quantile(log1p(circulating_market_cap), 0.01, 0.99)
+    # 对数流通市值。标准化。供其他因子市值中性化时使用
     MC_NORM = cs_zscore(MC_LOG)
-    # 对数市值。行业中性化。直接作为因子使用
+    # 对数流通市值。行业中性化。直接作为因子使用
     MC_NEUT = cs_resid_zscore(MC_NORM, CS_SW_L1, ONE)
 
     # 1 / pe_ratio和1 / pb_ratio需要处理负数吗？ cs_quantile_zscore cs_mad_zscore
@@ -68,7 +68,7 @@ def _code_block_3():
     SP = cs_mad_zscore_resid_zscore(1 / ps_ratio, MC_NORM, CS_SW_L1, ONE)
     CFP = cs_mad_zscore_resid_zscore(1 / pcf_ratio, MC_NORM, CS_SW_L1, ONE)
 
-    factor = ts_corr(turnover_ratio, ts_delay(CLOSE, 1), 20)
+    factor = ts_std_dev(amount, 10)
 
     POS_QTL = cs_quantile_zscore(factor)
     POS_MAD = cs_mad_zscore(factor)
@@ -112,10 +112,10 @@ if __name__ == '__main__':
     logger.info('特征保存完成, {}', OUTPUT_PATH)
 
     # TODO 不显示图表，不需要可以注释
-    sys.exit()
+    # sys.exit()
 
     factor = 'factor'
-    fwd_ret_1 = 'LABEL_OO_02'
+    fwd_ret_1 = 'FWD_RET'
     axvlines = ('2024-01-01',)
     quantiles = 9
 
