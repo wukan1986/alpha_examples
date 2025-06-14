@@ -12,18 +12,26 @@ from ml_cs.utils import load_dates, walk_forward, get_XyOther
 plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
+"""
+is_unbalance=True后，
+1. 预测概率是一个范围很小值？
+2. 直接只一轮就退出了？
+https://github.com/microsoft/LightGBM/issues/6807
+
+"""
+
 # %%
 params = {
     # TODO 分类不平衡
-    'is_unbalance': True,  # 自动平衡正负样本
+    # 'is_unbalance': True,  # 自动平衡正负样本
     # 或者使用以下方式手动设置权重
-    # 'scale_pos_weight': 3,  # 假设正样本是少数类，放大10倍权重
+    # 'scale_pos_weight': 7,  # 假设正样本是少数类，放大10倍权重
     # 或者更精确的类别权重
-    # 'class_weight': {0: 1, 1: 3},  # 为类别1设置更高权重
+    # 'class_weight': 'balanced',
 
     # TODO 分类
     'objective': 'binary',
-    'metric': {'binary_logloss'},  # 评价函数选择
+    'metric': {'binary_logloss', 'auc'},  # 评价函数选择
 
     # # TODO 回归
     # 'objective': 'mse',
@@ -32,13 +40,13 @@ params = {
     # 其他参数
     'max_depth': -1,
     'num_leaves': 63,
-    'learning_rate': 0.01,
+    'learning_rate': 0.05,
     'feature_fraction': 0.8,
     'bagging_fraction': 0.9,
     'bagging_freq': 5,
-    'lambda_l1': 0.0,
+    'lambda_l1': 0.1,
     'lambda_l2': 0.0,
-    'verbose': -1,  # 不显示
+    'verbose': 0,  # -1不显示
     'device_type': 'cpu',
     'seed': 42,
 }
@@ -64,13 +72,12 @@ def fit():
         model = lgb.train(
             params,
             train_set=ds[0],
-            num_boost_round=300,
+            num_boost_round=1000,
             valid_sets=ds,
             valid_names=['train', 'valid'],
-            feval=None,  # 与早停相配合
             callbacks=[
                 lgb.log_evaluation(10),
-                lgb.early_stopping(50),  # 与fevel配合使用
+                lgb.early_stopping(50, first_metric_only=False, verbose=True),
                 lgb.record_evaluation(evals_result)
             ],
         )
@@ -82,8 +89,9 @@ def fit():
 
 # %% 模型评估
 def evaluate(models):
-    _, ax = plt.subplots(1, 1, figsize=(10, 5))
-    plot_metric_errorbar(models, metric=list(params['metric'])[0], ax=ax)
+    for metric in params['metric']:
+        _, ax = plt.subplots(1, 1, figsize=(10, 5))
+        plot_metric_errorbar(models, metric=metric, ax=ax)
     _, ax = plt.subplots(1, 1, figsize=(10, 5))
     plot_importance_box(models, ax=ax)
     plt.show()
