@@ -100,7 +100,7 @@ def load_dates(path: str, date: str) -> pd.Series:
 
 
 def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
-                date: str, asset: str, label: str, *fwd_ret: str, is_fit: bool) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+                date: str, asset: str, label: str, *fwd_ret: str, is_test: bool) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     """获取X y other
 
     Parameters
@@ -112,10 +112,11 @@ def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
     asset
     label
     fwd_ret
-    is_fit:bool
+    is_test:bool
         是否用于训练。
         fit时，X和y都不能出现null
         predict时，X不能出现null,y无限制
+        但要验证predict效果时，y不能为hull
 
     Returns
     -------
@@ -128,7 +129,7 @@ def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
     """
 
     df = df.filter(pl.col(date).is_between(start, end))
-    if is_fit:
+    if is_test:
         df = df.drop_nulls(subset=pl.exclude(*fwd_ret))
     else:
         df = df.drop_nulls(subset=pl.exclude(*fwd_ret, label))
@@ -137,7 +138,7 @@ def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
     _y = df.select(date, asset, label)
     _other = df.select(date, asset, label, *fwd_ret)
 
-    # 转换成复合索引，还成正常输入到sklearn
+    # 转换成复合索引，可正常输入到sklearn
     _X = _X.to_pandas().set_index([date, asset])
     _y = _y.to_pandas().set_index([date, asset])
 

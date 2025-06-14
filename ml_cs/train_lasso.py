@@ -24,7 +24,7 @@ def fit():
     for i, train_dt, test_dt in walk_forward(trading_dates,
                                              n_splits=5, max_train_size=None, test_size=30, gap=3):
         for start, end in (train_dt, test_dt):
-            X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_fit=True)
+            X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_test=True)
             break
 
         model = Lasso(

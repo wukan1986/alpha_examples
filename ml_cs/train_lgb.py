@@ -14,24 +14,33 @@ plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”
 
 # %%
 params = {
-    'boosting_type': 'gbdt',
-    'objective': 'mse',  # 损失函数
-    # 'metric': 'None',  # 评估函数，这里用feval来替代
+    # TODO 分类不平衡
+    'is_unbalance': True,  # 自动平衡正负样本
+    # 或者使用以下方式手动设置权重
+    # 'scale_pos_weight': 3,  # 假设正样本是少数类，放大10倍权重
+    # 或者更精确的类别权重
+    # 'class_weight': {0: 1, 1: 3},  # 为类别1设置更高权重
 
-    'max_depth': 8,
+    # TODO 分类
+    'objective': 'binary',
+    'metric': {'binary_logloss'},  # 评价函数选择
+
+    # # TODO 回归
+    # 'objective': 'mse',
+    # 'metric': {'l2'},  #评价函数选择
+
+    # 其他参数
+    'max_depth': -1,
     'num_leaves': 63,
-    'learning_rate': 0.05,
-    'min_data_in_leaf': 50,
-    'feature_fraction': 1.0,
-    'bagging_fraction': 1.0,
+    'learning_rate': 0.01,
+    'feature_fraction': 0.8,
+    'bagging_fraction': 0.9,
     'bagging_freq': 5,
     'lambda_l1': 0.0,
     'lambda_l2': 0.0,
-    'max_bin': 127,
     'verbose': -1,  # 不显示
     'device_type': 'cpu',
     'seed': 42,
-    'force_col_wise': True,
 }
 # %%
 df = load_process()
@@ -45,17 +54,17 @@ def fit():
 
     models = []
     for i, train_dt, test_dt in walk_forward(trading_dates,
-                                             n_splits=3, max_train_size=None, test_size=60, gap=3):
+                                             n_splits=1, max_train_size=None, test_size=60, gap=3):
         ds = []
         for start, end in (train_dt, test_dt):
-            X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_fit=True)
+            X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_test=True)
             ds.append(lgb.Dataset(X, label=y, categorical_feature=categorical_feature))
 
         evals_result = {}  # to record eval results for plotting
         model = lgb.train(
             params,
-            ds[0],
-            num_boost_round=500,
+            train_set=ds[0],
+            num_boost_round=300,
             valid_sets=ds,
             valid_names=['train', 'valid'],
             feval=None,  # 与早停相配合
@@ -74,7 +83,7 @@ def fit():
 # %% 模型评估
 def evaluate(models):
     _, ax = plt.subplots(1, 1, figsize=(10, 5))
-    plot_metric_errorbar(models, metric='l2', ax=ax)
+    plot_metric_errorbar(models, metric=list(params['metric'])[0], ax=ax)
     _, ax = plt.subplots(1, 1, figsize=(10, 5))
     plot_importance_box(models, ax=ax)
     plt.show()
