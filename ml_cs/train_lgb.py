@@ -3,10 +3,12 @@ from copy import deepcopy
 import joblib
 import lightgbm as lgb
 from alphainspect.dtree import plot_metric_errorbar, plot_importance_box
+from imblearn.over_sampling import SMOTE  # noqa
 from loguru import logger
 from matplotlib import pyplot as plt
 
-from ml_cs.config import MODEL_FILENAME, INPUT1_PATH, DATE, ASSET, LABEL, DATA_END, FWD_RET, load_process, categorical_feature
+from ml_cs.config import MODEL_FILENAME, INPUT1_PATH, DATE, ASSET, LABEL, DATA_END, FWD_RET, categorical_feature
+from ml_cs.config import load_process_regression, load_process_binary, load_process_unbalance  # noqa
 from ml_cs.utils import load_dates, walk_forward, get_XyOther
 
 plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
@@ -19,39 +21,30 @@ is_unbalance=True后，
 https://github.com/microsoft/LightGBM/issues/6807
 
 """
-
+# 回归
+params_regression = {'objective': 'mae', 'metric': {'l1'}, }
+# 二分类，平衡
+params_binary = {'objective': 'binary', 'metric': {'binary_logloss', 'auc'}, }
+# 二分类，不平衡。is_unbalance/scale_pos_weight/class_weight
+params_unbalance = {'objective': 'binary', 'metric': {'auc'}, "is_unbalance": True}
 # %%
 params = {
-    # TODO 分类不平衡
-    # 'is_unbalance': True,  # 自动平衡正负样本
-    # 或者使用以下方式手动设置权重
-    # 'scale_pos_weight': 7,  # 假设正样本是少数类，放大10倍权重
-    # 或者更精确的类别权重
-    # 'class_weight': 'balanced',
-
-    # TODO 分类
-    'objective': 'binary',
-    'metric': {'binary_logloss', 'auc'},  # 评价函数选择
-
-    # # TODO 回归
-    # 'objective': 'mse',
-    # 'metric': {'l2'},  #评价函数选择
-
-    # 其他参数
     'max_depth': -1,
     'num_leaves': 63,
+    'min_data_in_leaf': 50,
     'learning_rate': 0.05,
-    'feature_fraction': 0.8,
+    'feature_fraction': 0.9,
     'bagging_fraction': 0.9,
     'bagging_freq': 5,
-    'lambda_l1': 0.1,
-    'lambda_l2': 0.0,
-    'verbose': 0,  # -1不显示
+    'lambda_l1': 0.5,
+    'lambda_l2': 0.5,
+    'verbose': 1,  # -1不显示
     'device_type': 'cpu',
     'seed': 42,
 }
+params.update(params_unbalance)
 # %%
-df = load_process()
+df = load_process_unbalance()
 logger.info('开始训练...')
 
 
@@ -66,13 +59,16 @@ def fit():
         ds = []
         for start, end in (train_dt, test_dt):
             X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_test=True)
+            # smote = SMOTE(random_state=42)
+            # X, y = smote.fit_resample(X, y)
+
             ds.append(lgb.Dataset(X, label=y, categorical_feature=categorical_feature))
 
         evals_result = {}  # to record eval results for plotting
         model = lgb.train(
             params,
             train_set=ds[0],
-            num_boost_round=1000,
+            num_boost_round=500,
             valid_sets=ds,
             valid_names=['train', 'valid'],
             callbacks=[

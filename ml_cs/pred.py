@@ -7,22 +7,26 @@ from loguru import logger
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_auc_score, classification_report
 
-from ml_cs.config import DATE, ASSET, LABEL, MODEL_FILENAME, INPUT1_PATH, DATA_START, FWD_RET, load_process
+from ml_cs.config import DATE, ASSET, LABEL, MODEL_FILENAME, INPUT1_PATH, DATA_START, FWD_RET
+from ml_cs.config import load_process_regression, load_process_binary, load_process_unbalance  # noqa
 from ml_cs.utils import load_dates, get_XyOther, walk_forward
 
 plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
 # %%
-df = load_process()
+# TODO 二分类试验阶段is_test=True
+is_test = True
+# 平衡二分类数据时效果好，但真实情况下是不可能已经过滤了其他数据
+df = load_process_unbalance()
 logger.info('开始预测...')
+# TODO 
+is_test = False
+df = load_process_regression()
 
 # %%
 logger.info('加载模型...')
 models = joblib.load(MODEL_FILENAME)
-
-# TODO 试验阶段is_test=True
-is_test = True
 
 
 # %% 预测

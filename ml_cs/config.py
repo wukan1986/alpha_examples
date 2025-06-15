@@ -42,8 +42,8 @@ categorical_feature = [
 
 
 # %%
-def load_process():
-    """加载数据，然后进行预处理"""
+def load_process_regression():
+    """加载数据用于回归问题"""
     df: pl.DataFrame = pl.read_parquet(INPUT1_PATH)
     print(df.columns)
 
@@ -54,6 +54,17 @@ def load_process():
     # df = df.with_columns(
     #     cs_zscore(cs.float() & cs.exclude(DATE, ASSET, LABEL, FWD_RET, *exclude_columns)).over(DATE)
     # )
+
+    return df
+
+
+def load_process_binary():
+    """加载数据用于二分类。平衡"""
+    df: pl.DataFrame = pl.read_parquet(INPUT1_PATH)
+    print(df.columns)
+
+    # 留下日期、资产、多个特征、一标签、一未来收益
+    df = df.select(DATE, ASSET, LABEL, FWD_RET, *feature_columns)
 
     print(df[LABEL].describe())
     # TODO 回归问题转换成二分类问题
@@ -67,6 +78,29 @@ def load_process():
     return df
 
 
+def load_process_unbalance():
+    """加载数据用于二分类。不平衡"""
+    df: pl.DataFrame = pl.read_parquet(INPUT1_PATH)
+    print(df.columns)
+
+    # 留下日期、资产、多个特征、一标签、一未来收益
+    df = df.select(DATE, ASSET, LABEL, FWD_RET, *feature_columns)
+
+    print(df[LABEL].describe())
+    # TODO 回归问题转换成二分类问题
+    df = df.with_columns(
+        cut(pl.col(LABEL), 0, 0.02)
+    )
+    print(df[LABEL].value_counts())
+    # 只留0,2换成0,1
+    df = df.filter(pl.col(LABEL) != 1).with_columns(pl.col(LABEL) // 2)
+    print(df[LABEL].value_counts())
+
+    return df
+
+
 if __name__ == '__main__':
     # 在这可以提前对数据进行调整
-    df = load_process()
+    # df = load_process_regression()
+    # df = load_process_binary()
+    df = load_process_unbalance()
