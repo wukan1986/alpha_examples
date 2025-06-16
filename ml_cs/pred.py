@@ -1,3 +1,5 @@
+from enum import Enum
+
 import joblib
 import numpy as np
 import polars as pl
@@ -14,15 +16,24 @@ from ml_cs.utils import load_dates, get_XyOther, walk_forward
 plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
+
+class Method(Enum):
+    RealWorld = 1  # 真实世界，y有空值
+    Binary = 2  # 使用平衡二分类数据，同时看分类报告
+    Unbalance = 3  # 使用不平衡数据，同时看分类报告
+
+
+method = Method.Unbalance
 # %%
-# TODO 二分类试验阶段is_test=True
-is_test = True
-# 平衡二分类数据时效果好，但真实情况下是不可能已经过滤了其他数据
-df = load_process_unbalance()
-logger.info('开始预测...')
-# TODO 
-is_test = False
-df = load_process_regression()
+if method == Method.RealWorld:
+    df = load_process_regression()
+    label_drop_nulls = False
+if method == Method.Binary:
+    df = load_process_binary()
+    label_drop_nulls = True
+if method == Method.Unbalance:
+    df = load_process_unbalance()
+    label_drop_nulls = True
 
 # %%
 logger.info('加载模型...')
@@ -38,14 +49,14 @@ def predict():
                                              n_splits=1, max_train_size=None, test_size=None, gap=0):
         start, end = train_dt[0], test_dt[-1]
 
-        X_test, y_test, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_test=is_test)
+        X_test, y_test, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, label_drop_nulls=label_drop_nulls)
 
         y_preds = {}
         for i, model in enumerate(models):
             num_iteration = model.best_iteration if hasattr(model, 'best_iteration') else None
             pred_proba = model.predict(X_test, num_iteration=num_iteration)
             print("预测概率范围:", pred_proba.min(), "~", pred_proba.max())
-            if is_test:
+            if method != Method.RealWorld:
                 print("AUC分数:", roc_auc_score(y_test, pred_proba))
                 print(classification_report(y_test, (pred_proba > 0.5).astype(int), zero_division=np.nan))
             y_preds[f'y_pred_{i}'] = pred_proba

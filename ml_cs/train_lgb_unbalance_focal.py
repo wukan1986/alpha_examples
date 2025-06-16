@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import imlightgbm as imlgb
 import joblib
 import lightgbm as lgb
 from alphainspect.dtree import plot_metric_errorbar, plot_importance_box
@@ -14,21 +15,17 @@ from ml_cs.utils import load_dates, walk_forward, get_XyOther
 plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
-"""
-is_unbalance=True后，
-1. 预测概率是一个范围很小值？
-2. 直接只一轮就退出了？
-https://github.com/microsoft/LightGBM/issues/6807
+# https://github.com/RektPunk/Imbalance-LightGBM/tree/main/imlightgbm
+# https://github.com/jrzaurin/LightGBM-with-Focal-Loss
+# https://medium.com/data-science/lightgbm-with-the-focal-loss-for-imbalanced-datasets-9836a9ae00ca
 
-"""
-# 回归
-params_regression = {'objective': 'mae', 'metric': {'l1'}, }
-# 二分类，平衡
-params_binary = {'objective': 'binary', 'metric': {'binary_logloss', 'auc'}, }
-# 二分类，不平衡。is_unbalance/scale_pos_weight/class_weight
-params_unbalance = {'objective': 'binary', 'metric': {'auc'}, "is_unbalance": True}
 # %%
 params = {
+    "objective": "binary_focal",  # binary_weighted
+    "alpha": 0.5,
+    "gamma": 1.0,  # alpha with binary_weighted
+    "metric": "auc",
+
     'max_depth': -1,
     'num_leaves': 63,
     'min_data_in_leaf': 50,
@@ -42,7 +39,6 @@ params = {
     'device_type': 'cpu',
     'seed': 42,
 }
-params.update(params_unbalance)
 # %%
 df = load_process_unbalance()
 logger.info('开始训练...')
@@ -50,7 +46,6 @@ logger.info('开始训练...')
 
 # %%
 def fit():
-    # fit时，trading_dates只取了一部分
     trading_dates = load_dates(INPUT1_PATH, DATE)[:DATA_END]
 
     models = []
@@ -58,17 +53,18 @@ def fit():
                                              n_splits=1, max_train_size=None, test_size=60, gap=3):
         ds = []
         for start, end in (train_dt, test_dt):
-            X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, is_test=True)
-            # smote = SMOTE(random_state=42)
-            # X, y = smote.fit_resample(X, y)
+            X, y, other = get_XyOther(df, start, end, DATE, ASSET, LABEL, FWD_RET, label_drop_nulls=True)
 
-            ds.append(lgb.Dataset(X, label=y, categorical_feature=categorical_feature))
+            if len(ds) == 0:
+                ds.append(lgb.Dataset(X, label=y, categorical_feature=categorical_feature))
+            else:
+                ds.append(lgb.Dataset(X, label=y, categorical_feature=categorical_feature, reference=ds[0]))
 
-        evals_result = {}  # to record eval results for plotting
-        model = lgb.train(
+        evals_result = {}
+        model = imlgb.train(
             params,
             train_set=ds[0],
-            num_boost_round=500,
+            num_boost_round=200,
             valid_sets=ds,
             valid_names=['train', 'valid'],
             callbacks=[
@@ -85,7 +81,7 @@ def fit():
 
 # %% 模型评估
 def evaluate(models):
-    for metric in params['metric']:
+    for metric in [params['metric']]:
         _, ax = plt.subplots(1, 1, figsize=(10, 5))
         plot_metric_errorbar(models, metric=metric, ax=ax)
     _, ax = plt.subplots(1, 1, figsize=(10, 5))

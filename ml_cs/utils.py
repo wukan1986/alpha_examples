@@ -100,7 +100,8 @@ def load_dates(path: str, date: str) -> pd.Series:
 
 
 def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
-                date: str, asset: str, label: str, *fwd_ret: str, is_test: bool) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+                date: str, asset: str, label: str, *fwd_ret: str,
+                label_drop_nulls: bool) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     """获取X y other
 
     Parameters
@@ -112,8 +113,7 @@ def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
     asset
     label
     fwd_ret
-    is_test:bool
-        是否用于训练。
+    label_drop_nulls:bool
         fit时，X和y都不能出现null
         predict时，X不能出现null,y无限制
         但要验证predict效果时，y不能为hull
@@ -129,7 +129,7 @@ def get_XyOther(df: pl.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
     """
 
     df = df.filter(pl.col(date).is_between(start, end))
-    if is_test:
+    if label_drop_nulls:
         df = df.drop_nulls(subset=pl.exclude(*fwd_ret))
     else:
         df = df.drop_nulls(subset=pl.exclude(*fwd_ret, label))

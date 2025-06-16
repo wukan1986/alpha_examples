@@ -25,7 +25,8 @@ PRED_EXCEL = 'pred.xlsx'  # 预测结果导出Excel
 # %%
 # TODO 特征
 feature_columns = [
-    "MC_NEUT", "EP", "BP", "SP", "CFP",
+    "MC_NEUT",
+    "EP", "BP", "SP", "CFP",
 
     "DOJI4",
 
