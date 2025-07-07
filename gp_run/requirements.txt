@@ -3,4 +3,4 @@ polars_ta
 tensorboard
 tensorboardX
 more_itertools
-expr_codegen>=0.13.5
+expr_codegen>=0.14.0
