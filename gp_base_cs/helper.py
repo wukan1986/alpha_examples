@@ -104,7 +104,7 @@ def batched_exprs(batch_id, exprs_list, gen, label, split_date, df_input):
 
     globals_ = {}
     exec(codes, globals_)
-    df_output = globals_['main'](df_input, filter_last=False)
+    df_output = globals_['main'](df_input, ge_date_idx=0)
 
     elapsed_time = time.perf_counter() - tic
     logger.info("{}代{}批 因子 计算完成。共用时 {:.3f} 秒，平均 {:.3f} 秒/条，或 {:.3f} 条/秒", gen, batch_id, elapsed_time, elapsed_time / cnt, cnt / elapsed_time)

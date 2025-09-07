@@ -19,6 +19,7 @@ from polars_ta.prefix.tdx import *  # noqa
 from polars_ta.prefix.ta import *  # noqa
 from polars_ta.prefix.wq import *  # noqa
 from polars_ta.prefix.cdl import *  # noqa
+from polars_ta.prefix.vec import *  # noqa
 
 DataFrame = TypeVar("DataFrame", _pl_LazyFrame, _pl_DataFrame)
 # ===================================
@@ -91,19 +92,18 @@ SMA_060 = ts_mean(CLOSE, 60) #
 """
 
 
-def filter_last(df: DataFrame) -> DataFrame:
-    """过滤数据，只取最后一天。实盘时可用于减少计算量
-    前一个调用的ts,这里可以直接调用，可以认为已经排序好
-        `df = filter_last(df)`
-    反之
-        `df = filter_last(df.sort(_DATE_))`
-    """
-    return df.filter(pl.col(_DATE_) >= df.select(pl.last(_DATE_))[0, 0])
+def _filter_last(df: DataFrame, ge_date_idx: int) -> DataFrame:
+    """过滤数据，只取最后几天。实盘时可用于减少计算量"""
+    if ge_date_idx == 0:
+        return df
+    else:
+        return df.filter(pl.col(_DATE_) >= df.select(pl.col(_DATE_).unique().sort())[ge_date_idx, 0])
 
 
-def main(df: DataFrame) -> DataFrame:
+def main(df: DataFrame, ge_date_idx: int) -> DataFrame:
 
     df = func_0_ts__asset(df.sort(_ASSET_, _DATE_)).drop(*["_x_0"])
+    df = _filter_last(df, ge_date_idx)
 
     # drop intermediate columns
     # df = df.select(pl.exclude(r'^_x_\d+$'))

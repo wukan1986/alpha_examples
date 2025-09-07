@@ -19,12 +19,13 @@ from polars_ta.prefix.tdx import *  # noqa
 from polars_ta.prefix.ta import *  # noqa
 from polars_ta.prefix.wq import *  # noqa
 from polars_ta.prefix.cdl import *  # noqa
+from polars_ta.prefix.vec import *  # noqa
 
 DataFrame = TypeVar("DataFrame", _pl_LazyFrame, _pl_DataFrame)
 # ===================================
 
-_ = ["DOJI", "HIGH", "CLOSE", "OPEN", "LOW"]
-[DOJI, HIGH, CLOSE, OPEN, LOW] = [pl.col(i) for i in _]
+_ = ["OPEN", "DOJI", "HIGH", "CLOSE", "LOW"]
+[OPEN, DOJI, HIGH, CLOSE, LOW] = [pl.col(i) for i in _]
 
 _ = ["_x_1", "_x_2", "_x_0", "RETURN_CC_1", "_x_3", "RETURN_CO_1", "RETURN_OC_1", "NEXT_DOJI", "RETURN_OO_1", "RETURN_OO_5"]
 [_x_1, _x_2, _x_0, RETURN_CC_1, _x_3, RETURN_CO_1, RETURN_OC_1, NEXT_DOJI, RETURN_OO_1, RETURN_OO_5] = [pl.col(i) for i in _]
@@ -118,21 +119,20 @@ RETURN_OO_5 = ts_delay(OPEN, -6)/ts_delay(OPEN, -1) - 1*1 #
 """
 
 
-def filter_last(df: DataFrame) -> DataFrame:
-    """过滤数据，只取最后一天。实盘时可用于减少计算量
-    前一个调用的ts,这里可以直接调用，可以认为已经排序好
-        `df = filter_last(df)`
-    反之
-        `df = filter_last(df.sort(_DATE_))`
-    """
-    return df.filter(pl.col(_DATE_) >= df.select(pl.last(_DATE_))[0, 0])
+def _filter_last(df: DataFrame, ge_date_idx: int) -> DataFrame:
+    """过滤数据，只取最后几天。实盘时可用于减少计算量"""
+    if ge_date_idx == 0:
+        return df
+    else:
+        return df.filter(pl.col(_DATE_) >= df.select(pl.col(_DATE_).unique().sort())[ge_date_idx, 0])
 
 
-def main(df: DataFrame) -> DataFrame:
+def main(df: DataFrame, ge_date_idx: int) -> DataFrame:
 
     df = func_0_ts__asset(df.sort(_ASSET_, _DATE_)).drop(*[])
-    df = func_0_cl(df).drop(*["_x_0", "_x_1", "_x_2"])
+    df = func_0_cl(df).drop(*["_x_2", "_x_0", "_x_1"])
     df = func_1_ts__asset(df.sort(_ASSET_, _DATE_)).drop(*["_x_3"])
+    df = _filter_last(df, ge_date_idx)
 
     # drop intermediate columns
     # df = df.select(pl.exclude(r'^_x_\d+$'))

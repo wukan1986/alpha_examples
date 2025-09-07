@@ -1,4 +1,4 @@
 ray[default]
 polars_ta
-expr_codegen>=0.14.0
+expr_codegen>=0.15.0
 more_itertools
