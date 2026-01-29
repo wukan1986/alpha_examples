@@ -13,7 +13,7 @@ from gp_base_cs.base import get_fitness
 
 def fitness_individual(a: str, b: str) -> pl.Expr:
     """个体fitness函数"""
-    return pl.corr(a, b, method='pearson', ddof=0, propagate_nans=False)
+    return pl.corr(a, b, method='pearson', propagate_nans=False)
 
 
 def root_operator(df: pl.DataFrame):
@@ -88,7 +88,10 @@ def batched_exprs(batch_id, exprs_list, gen, label, split_date, df_input):
     codes, G = tool.all(exprs_list, style='polars', template_file='template.py.j2',
                         replace=False, regroup=True, format=True,
                         date='date', asset='asset', over_null="partition_by",
-                        skip_simplify=True)
+                        skip_simplify=True,
+                        # TODO 强行让部分不合法的表达式能运行，如ts_delay(1,2)
+                        extra_codes=("apply_const_to_expr()",)
+                        )
 
     cnt = len(exprs_list)
     logger.info("{}代{}批 代码 开始执行。共 {} 条 表达式", gen, batch_id, cnt)

@@ -14,7 +14,7 @@ from gp_base_cs.base import get_fitness
 def fitness_individual(a: str, b: str) -> pl.Expr:
     """个体fitness函数"""
     # 这使用的是rank_ic
-    return pl.corr(a, b, method='spearman', ddof=0, propagate_nans=False)
+    return pl.corr(a, b, method='spearman', propagate_nans=False)
 
 
 def root_operator(df: pl.DataFrame):
@@ -56,6 +56,8 @@ def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, spl
 
     # TODO 是否要强插一个根算子???
     # df = root_operator(df)
+    # TODO https://github.com/pola-rs/polars/issues/26335
+    df = df.with_columns(cs.numeric().cast(pl.Float64))
 
     df = df.group_by('date').agg(
         [fitness_individual(X, label) for X in columns]
@@ -93,7 +95,10 @@ def batched_exprs(batch_id, exprs_list, gen, label, split_date, df_input):
     codes, G = tool.all(exprs_list, style='polars', template_file='template.py.j2',
                         replace=False, regroup=True, format=True,
                         date='date', asset='asset', over_null="partition_by",
-                        skip_simplify=True)
+                        skip_simplify=True,
+                        # TODO 强行让部分不合法的表达式能运行，如ts_delay(1,2)
+                        extra_codes=("apply_const_to_expr()",)
+                        )
 
     # with open('out1.py', 'w') as f:
     #     f.write(codes)
