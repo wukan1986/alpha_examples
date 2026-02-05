@@ -57,7 +57,7 @@ def fitness_population(df: pl.DataFrame, columns: Sequence[str], label: str, spl
     # TODO 是否要强插一个根算子???
     # df = root_operator(df)
     # TODO https://github.com/pola-rs/polars/issues/26335
-    df = df.with_columns(cs.numeric().cast(pl.Float64))
+    # df = df.with_columns(cs.numeric().cast(pl.Float64))
 
     df = df.group_by('date').agg(
         [fitness_individual(X, label) for X in columns]
