@@ -22,7 +22,7 @@ df = pl.read_parquet('data/data.parquet')
 logger.info('生成特征')
 from codes.features import main
 
-df = main(df)
+df = main(df,0)
 logger.info('特征生成完成')
 print(df.tail())
 

@@ -53,8 +53,11 @@ def predict():
 
         y_preds = {}
         for i, model in enumerate(models):
-            num_iteration = model.best_iteration if hasattr(model, 'best_iteration') else None
-            pred_proba = model.predict(X_test, num_iteration=num_iteration)
+            if hasattr(model, 'best_iteration'):
+                num_iteration = model.best_iteration
+                pred_proba = model.predict(X_test, num_iteration=num_iteration)
+            else:
+                pred_proba = model.predict(X_test)
             print("预测概率范围:", pred_proba.min(), "~", pred_proba.max())
             if method != Method.RealWorld:
                 print("AUC分数:", roc_auc_score(y_test, pred_proba))

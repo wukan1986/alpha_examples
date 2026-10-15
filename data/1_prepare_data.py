@@ -60,7 +60,7 @@ df = df.with_columns([
 from codes.labels import main
 
 logger.info('生成特征')
-df = main(df)
+df = main(df,0)
 logger.info('特征生成完成')
 print(df.tail())
 
